@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UBG Village — What's Inside the Cube?</title>
+<link rel="icon" type="image/png" href="icon128.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+:root{--dark:#030303;--green:#00ff00;--glow:rgba(0,255,0,0.2);--gold:#ffd700;--gold-glow:rgba(255,215,0,0.25);}
+*{margin:0;padding:0;box-sizing:border-box;cursor:none!important;}
+body{background:var(--dark);color:white;font-family:'Share Tech Mono',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);}
+#cursor{position:fixed;width:20px;height:20px;border-radius:50%;border:2px solid var(--green);pointer-events:none;z-index:999999;transform:translate(-50%,-50%);transition:width 0.08s,height 0.08s;box-shadow:0 0 8px var(--green);left:-100px;top:-100px;}
+#cursor.clicking{width:12px;height:12px;background:rgba(0,255,0,0.3);}
+#usernameGate{position:fixed;inset:0;background:#000;z-index:5000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;}
+#usernameGate h1{font-family:'Orbitron',monospace;font-size:2em;color:var(--green);text-shadow:0 0 30px var(--green);letter-spacing:5px;text-align:center;}
+#usernameGate .sub{color:#333;font-size:0.8em;letter-spacing:3px;text-align:center;line-height:1.8;}
+#usernameInput{background:#000;border:2px solid var(--green);color:var(--green);padding:13px 20px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:1.1em;outline:none;width:260px;text-align:center;letter-spacing:3px;box-shadow:0 0 15px var(--glow);cursor:text!important;caret-color:var(--green);}
+#usernameInput::placeholder{color:#1a1a1a;letter-spacing:1px;}
+#joinBtn{background:var(--green);color:#000;border:none;padding:12px 40px;border-radius:8px;font-family:'Orbitron',monospace;font-weight:700;font-size:0.95em;letter-spacing:3px;transition:0.2s;box-shadow:0 0 20px var(--glow);}
+#joinBtn:hover{box-shadow:0 0 40px var(--green);transform:scale(1.05);}
+#topBar{width:100%;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #0f0f0f;flex-shrink:0;z-index:100;}
+.back-btn{color:var(--green);font-size:0.8em;letter-spacing:2px;text-decoration:none;border:1px solid #1a1a1a;padding:6px 14px;border-radius:6px;transition:0.2s;}
+.back-btn:hover{border-color:var(--green);}
+#topBar .center-title{font-family:'Orbitron',monospace;font-size:0.9em;color:var(--green);letter-spacing:4px;text-shadow:0 0 10px var(--green);}
+#statsBar{display:flex;gap:30px;padding:8px 20px;width:100%;justify-content:center;border-bottom:1px solid #0a0a0a;flex-shrink:0;}
+.stat{text-align:center;}
+.stat .val{color:var(--green);font-family:'Orbitron',monospace;font-size:1em;font-weight:700;}
+.stat .lbl{color:#2a2a2a;font-size:0.65em;letter-spacing:2px;margin-top:2px;}
+#layerBar{display:flex;padding:4px 20px;justify-content:center;align-items:center;flex-shrink:0;gap:8px;}
+#gameArea{display:flex;flex:1;overflow:hidden;min-height:0;}
+#inventoryBar{width:64px;background:#050505;border-right:1px solid #0f0f0f;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:0;flex-shrink:0;overflow:hidden;}
+.inv-label{color:#1a1a1a;font-size:0.55em;letter-spacing:1px;margin-bottom:4px;writing-mode:vertical-lr;}
+#invSlots{display:flex;flex-direction:column;gap:6px;width:100%;align-items:center;overflow-y:auto;max-height:320px;padding:6px 0;}
+.inv-slot{width:44px;height:44px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;font-size:1.4em;}
+.inv-slot.has-item{border-color:#2a2a2a;}
+.inv-slot.has-item:hover{border-color:var(--green);}
+.inv-slot.active-powerup{border-color:var(--green);box-shadow:0 0 8px var(--green);}
+.slot-count{position:absolute;bottom:1px;right:3px;font-size:0.45em;color:var(--green);font-family:'Share Tech Mono',monospace;}
+#zoomControls{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:8px;border-top:1px solid #0f0f0f;width:100%;margin-top:auto;}
+.zoom-btn{background:#0a0a0a;color:var(--green);border:1px solid #1a1a1a;width:36px;height:28px;border-radius:6px;font-size:1.1em;display:flex;align-items:center;justify-content:center;}
+.zoom-btn:hover{border-color:var(--green);}
+#zoomLabel{color:#222;font-size:0.6em;letter-spacing:1px;text-align:center;}
+#fitBtn{background:#0a0a0a;color:#333;border:1px solid #1a1a1a;width:36px;height:20px;border-radius:4px;font-size:0.55em;letter-spacing:1px;margin-top:2px;}
+#canvasWrap{flex:1;overflow:hidden;position:relative;}
+#canvasPan{position:absolute;top:0;left:0;transform-origin:0 0;}
+#cubeCanvas{display:block;image-rendering:pixelated;}
+#ticker{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.9);border-top:1px solid #0f0f0f;padding:6px 20px;font-size:0.72em;color:#222;letter-spacing:2px;z-index:100;display:flex;gap:20px;align-items:center;}
+#ticker span{color:#333;}
+#tickerName{color:var(--green);}
+#tickerLayer{color:#555;}
+
+#hofBtn .icon{font-size:1.6em;}
+#hofPanel{display:none;position:fixed;right:0;top:0;bottom:0;width:300px;background:#050505;border-left:1px solid #111;z-index:300;flex-direction:column;overflow:hidden;}
+#hofPanel.open{display:flex;}
+#hofPanel h3{font-family:'Orbitron',monospace;color:var(--gold);letter-spacing:3px;font-size:0.85em;padding:20px;border-bottom:1px solid #111;flex-shrink:0;}
+#hofClose{position:absolute;top:15px;right:15px;color:#333;font-size:1.3em;}
+#hofClose:hover{color:var(--gold);}
+#hofEntries{flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:10px;}
+.hof-card{background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.08);border-radius:8px;padding:12px 14px;}
+.hof-card .hof-name{color:var(--gold);font-weight:bold;font-size:0.9em;margin-bottom:4px;}
+.hof-card .hof-meta{color:#333;font-size:0.72em;letter-spacing:1px;}
+.hof-card.top{border-color:rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);}
+.chip-fx{position:fixed;pointer-events:none;z-index:9995;border-radius:2px;animation:chipFly 0.6s ease-out forwards;}
+@keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1) rotate(0deg);}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.3) rotate(var(--rot));}}
+#layerFlash{position:fixed;inset:0;pointer-events:none;z-index:9980;opacity:0;transition:opacity 0.1s;}
+#layerFlash.flash{opacity:1;transition:none;}
+#winnerScreen{display:none;position:fixed;inset:0;z-index:20000;background:#000;align-items:center;justify-content:center;flex-direction:column;}
+#winnerScreen h1{font-family:'Orbitron',monospace;font-size:2.5em;color:var(--gold);text-shadow:0 0 40px var(--gold);letter-spacing:4px;text-align:center;margin-bottom:10px;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{text-shadow:0 0 40px var(--gold);}50%{text-shadow:0 0 80px var(--gold),0 0 120px var(--gold);}}
+#winnerScreen .winner-name{font-family:'Orbitron',monospace;font-size:1.5em;color:white;letter-spacing:3px;margin-bottom:20px;text-align:center;}
+#winnerScreen p{color:#555;font-size:0.85em;letter-spacing:2px;text-align:center;line-height:2;margin-bottom:25px;}
+#winnerScreen button{background:var(--gold);color:#000;border:none;padding:12px 40px;border-radius:8px;font-family:'Orbitron',monospace;font-weight:700;font-size:0.95em;letter-spacing:2px;}
+.conf{position:fixed;pointer-events:none;z-index:19999;border-radius:2px;animation:confFall linear forwards;}
+@keyframes confFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1;}100%{transform:translateY(105vh) rotate(720deg);opacity:0;}}
+
+/* CHIP NAME FLOAT */
+.chip-name-float {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9996;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72em;
+  letter-spacing: 2px;
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green);
+  white-space: nowrap;
+  animation: nameFloat 1.4s ease-out forwards;
+}
+@keyframes nameFloat {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-48px) scale(0.85); }
+}
+
+
+
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+
+<!-- USERNAME GATE -->
+<div id="usernameGate">
+  <h1>WHAT'S INSIDE<br>THE CUBE?</h1>
+  <div class="sub">100 MILLION TILES STAND BETWEEN YOU<br>AND THE SECRET WITHIN</div>
+  <input type="text" id="usernameInput" placeholder="YOUR NAME" maxlength="20" autocomplete="off">
+  <button id="joinBtn" onclick="joinGame()">ENTER</button>
+</div>
+
+<!-- TOP BAR -->
+<div id="topBar">
+  <a href="index.html" class="back-btn">← BACK</a>
+  <div class="center-title">◼ THE CUBE</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="color:#555;font-size:0.8em;letter-spacing:2px;">🪙 <span id="coinDisplay">0</span></div>
+    <button onclick="openShop()" style="background:transparent;color:var(--gold);border:1px solid rgba(255,215,0,0.3);padding:6px 14px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:0.8em;letter-spacing:2px;transition:0.2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='rgba(255,215,0,0.3)'">🛒 SHOP</button>
+    <div style="color:#333;font-size:0.8em;letter-spacing:2px;">👤 <span id="playerDisplay">—</span></div>
+  </div>
+</div>
+
+<!-- LAYER NAME BADGE -->
+<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 20px;flex-shrink:0;">
+  <div id="layerColorDot" style="width:10px;height:10px;border-radius:50%;background:#ff9944;box-shadow:0 0 6px #ff9944;flex-shrink:0;"></div>
+  <span id="layerNameText" style="font-family:'Orbitron',monospace;font-size:0.75em;letter-spacing:4px;color:#ff9944;text-shadow:0 0 10px #ff9944;">LAYER 1 — DIRT</span>
+  <div id="layerColorDot2" style="width:10px;height:10px;border-radius:50%;background:#ff9944;box-shadow:0 0 6px #ff9944;flex-shrink:0;"></div>
+</div>
+
+<!-- STATS BAR -->
+<div id="statsBar">
+  <div class="stat"><div class="val" id="statTiles">10,000</div><div class="lbl">LAYER TILES LEFT</div></div>
+  <div class="stat"><div class="val" id="statTotalLeft">100M</div><div class="lbl">TOTAL TILES LEFT</div></div>
+  <div class="stat"><div class="val" id="statLayer">1 / 10000</div><div class="lbl">CURRENT LAYER</div></div>
+  <div class="stat"><div class="val" id="statTotal">0</div><div class="lbl">TOTAL CHIPS</div></div>
+  <div class="stat"><div class="val" id="statPct">0%</div><div class="lbl">LAYER CLEARED</div></div>
+</div>
+
+<!-- DEPTH BAR -->
+<div id="layerBar" style="display:flex;padding:4px 20px;justify-content:center;align-items:center;flex-shrink:0;gap:8px;">
+  <span style="color:#2a2a2a;font-size:0.65em;letter-spacing:2px;">DEPTH</span>
+  <div style="flex:1;max-width:600px;height:6px;background:#0a0a0a;border-radius:3px;overflow:hidden;border:1px solid #1a1a1a;">
+    <div id="layerProgressFill" style="height:100%;background:#ff9944;border-radius:3px;width:0.01%;transition:width 0.5s;box-shadow:0 0 8px #ff9944;"></div>
+  </div>
+  <span id="layerDepthLabel" style="color:#2a2a2a;font-size:0.65em;letter-spacing:2px;">L1/10000</span>
+</div>
+
+<!-- PASSIVE BADGES -->
+<!-- COMMUNITY BUFFS BAR -->
+<div id="commBuffBar" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
+
+<div id="passiveBadges" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
+
+<!-- GAME AREA -->
+<div id="gameArea">
+  <div id="inventoryBar">
+    <div class="inv-label">INV</div>
+    <div id="invSlots"></div>
+    <div id="zoomControls">
+      <button class="zoom-btn" onclick="zoomIn()">+</button>
+      <span id="zoomLabel">100%</span>
+      <button class="zoom-btn" onclick="zoomOut()">−</button>
+      <button id="fitBtn" onclick="resetZoom()">FIT</button>
+    </div>
+    
+    <!-- ONLINE PLAYERS -->
+    <div style="border-top:1px solid #111;padding:8px 6px;overflow-y:auto;max-height:120px;flex-shrink:0;">
+      <div style="color:#1a1a1a;font-size:0.6em;letter-spacing:3px;margin-bottom:6px;">● ONLINE</div>
+      <div id="onlinePlayersList" style="display:flex;flex-direction:column;gap:3px;"></div>
+    </div>
+  </div>
+  <div id="canvasWrap">
+    <div id="canvasPan">
+      <canvas id="cubeCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT SIDE BUTTONS -->
+<div id="hofBtn" onclick="toggleHof()" style="position:fixed;right:20px;top:calc(50% - 55px);background:rgba(0,0,0,0.9);border:1px solid rgba(255,215,0,0.25);border-radius:12px;padding:14px 10px;z-index:250;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.65em;color:#555;letter-spacing:1px;transition:0.2s;width:70px;text-align:center;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='rgba(255,215,0,0.25)';this.style.color='#555'">
+  <span style="font-size:1.8em;">🏆</span><span>HALL OF<br>FAME</span>
+</div>
+<div id="commShopBtn" onclick="openCommShop()" style="position:fixed;right:20px;top:calc(50% + 55px);background:rgba(0,0,0,0.9);border:1px solid rgba(0,200,255,0.25);border-radius:12px;padding:14px 10px;z-index:250;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.65em;color:#555;letter-spacing:1px;transition:0.2s;width:70px;text-align:center;" onmouseover="this.style.borderColor='#00cfff';this.style.color='#00cfff'" onmouseout="this.style.borderColor='rgba(0,200,255,0.25)';this.style.color='#555'">
+  <span style="font-size:1.8em;">🌐</span><span>COMM<br>BUFFS</span>
+</div>
+
+<!-- TICKER -->
+<div id="ticker">
+  <span>LAST CHIP:</span> <span id="tickerName">—</span>
+  <span id="tickerLayer" style="margin-left:auto;">DIRT LAYER</span>
+</div>
+
+<!-- HOF -->
+
+
+<div id="hofPanel">
+  <h3>🏆 CUBE BREAKERS</h3>
+  <span id="hofClose" onclick="toggleHof()">✖</span>
+  <div id="hofEntries"><div style="color:#222;text-align:center;padding:30px;font-size:0.8em;">No legends yet.</div></div>
+</div>
+
+<!-- FLASH / WINNER -->
+<div id="layerFlash"></div>
+<div id="winnerScreen">
+  <h1>YOU CRACKED<br>THE CUBE</h1>
+  <div class="winner-name" id="winnerNameDisplay"></div>
+  <p>YOU MADE THE FINAL CHIP.<br>YOUR NAME IS IMMORTALIZED<br>IN THE HALL OF FAME.</p>
+  <button onclick="closeWinner()">CLAIM YOUR PLACE</button>
+</div>
+
+<!-- SHOP MODAL -->
+<div id="shopModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:10005;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+  <div style="background:#050505;border:2px solid var(--gold);border-radius:15px;padding:30px;width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px var(--gold-glow);position:relative;">
+    <span onclick="closeShop()" style="position:absolute;top:15px;right:20px;color:var(--gold);font-size:22px;">✖</span>
+    <h2 style="font-family:'Orbitron',monospace;color:var(--gold);text-align:center;letter-spacing:4px;margin-bottom:5px;font-size:1.2em;">🛒 CHIP SHOP</h2>
+    <div style="text-align:center;color:#555;font-size:0.8em;letter-spacing:2px;margin-bottom:20px;">YOUR COINS: <span id="shopCoinDisplay" style="color:var(--gold);">0</span></div>
+    <div style="color:#333;font-size:0.7em;letter-spacing:3px;margin-bottom:10px;">⚡ POWER-UPS</div>
+    <div id="shopPowerups"></div>
+    <div style="color:#333;font-size:0.7em;letter-spacing:3px;margin:15px 0 10px;">🔧 PASSIVE UPGRADES</div>
+    <div id="shopPassives"></div>
+  </div>
+</div>
+
+<div id="powerupBanner" style="display:none;position:fixed;top:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);border:1px solid var(--green);border-radius:8px;padding:6px 20px;font-size:0.75em;letter-spacing:2px;color:var(--green);z-index:9000;pointer-events:none;"></div>
+
+<script>
+const SUPABASE_URL='https://uicvpfwiuwwqzrmrhdio.supabase.co';
+const SUPABASE_KEY='sb_publishable_SU0dFx-A0GzwbW0v9_pJJw_m4MSHrkn';
+
+// CONFIG
+const GRID=100;
+const TOTAL_LAYERS=10000;
+const TILES_PER_LAYER=GRID*GRID;
+const TOTAL_TILES=TILES_PER_LAYER*TOTAL_LAYERS;
+
+// LAYER COLORS — lazy lookup, no pre-built array
+const _PAL=[
+  {base:'#5c3d1a',hi:'#ff9944',crack:'#2a1a08',name:'DIRT'},
+  {base:'#555555',hi:'#ffffff',crack:'#222222',name:'STONE'},
+  {base:'#6b3010',hi:'#ff6622',crack:'#2a1005',name:'GRANITE'},
+  {base:'#5a2a00',hi:'#ff7700',crack:'#220f00',name:'COPPER'},
+  {base:'#3a0a0a',hi:'#ff0000',crack:'#150303',name:'IRON'},
+  {base:'#003a10',hi:'#00ff44',crack:'#001a08',name:'EMERALD'},
+  {base:'#3a3000',hi:'#ffee00',crack:'#151100',name:'GOLD'},
+  {base:'#000855',hi:'#3399ff',crack:'#000322',name:'LAPIS'},
+  {base:'#220044',hi:'#dd00ff',crack:'#0f001a',name:'AMETHYST'},
+  {base:'#003355',hi:'#00eeff',crack:'#001522',name:'CRYSTAL'},
+  {base:'#003a2a',hi:'#00ffaa',crack:'#001510',name:'AQUA'},
+  {base:'#333300',hi:'#ffff00',crack:'#111100',name:'SULFUR'},
+  {base:'#330033',hi:'#ff00ff',crack:'#110011',name:'PLASMA'},
+  {base:'#440800',hi:'#ff4400',crack:'#1a0300',name:'MAGMA'},
+  {base:'#000033',hi:'#0055ff',crack:'#000011',name:'VOID'},
+  {base:'#443310',hi:'#ffbb44',crack:'#1a1305',name:'SANDSTONE'},
+  {base:'#0a3305',hi:'#55ff00',crack:'#041502',name:'MOSS'},
+  {base:'#220022',hi:'#ff55ff',crack:'#0d000d',name:'OBSIDIAN'},
+  {base:'#002244',hi:'#55ddff',crack:'#00101a',name:'ICE'},
+  {base:'#331500',hi:'#ff8800',crack:'#130800',name:'BRONZE'},
+];
+function LC(idx){
+  if(idx>=TOTAL_LAYERS-1)return{base:'#000',hi:'#fff',crack:'#050505',name:'THE CORE'};
+  const p=_PAL[idx%_PAL.length],cy=Math.floor(idx/_PAL.length);
+  return{base:p.base,hi:p.hi,crack:p.crack,name:cy>0?`DEEP ${p.name} ${cy+1}`:p.name};
+}
+
+// STATE
+let username='',tiles={},currentLayer=1,totalChips=0,isWinner=false,hoveredTile=-1;
+let canvas,ctx,offscreen,offCtx,TILE_SIZE=8;
+let fullRedrawNeeded=true,dirtyTiles=new Set();
+let zoomLevel=1,panX=0,panY=0,isPanning=false,panStartX=0,panStartY=0,panPX=0,panPY=0;
+const MIN_ZOOM=0.05,MAX_ZOOM=10;
+
+// SHOP STATE
+let coins=0,passiveLevels={autoChipper:0,shovel:0,magnet:0,coinBoost:0,speedChip:0};
+let activePowerups={bomb:false,frenzy:0,reveal:false};
+let frenzyInterval=null,frenzyTimeLeft=0,autoChipInterval=null;
+
+// CURSOR
+const cur=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';});
+document.addEventListener('mousedown',()=>cur.classList.add('clicking'));
+document.addEventListener('mouseup',()=>cur.classList.remove('clicking'));
+
+// SUPABASE
+async function sbFetch(path,opts={}){
+  const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{...opts,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})}});
+  if(!res.ok){const e=await res.text();throw new Error(res.status+': '+e.slice(0,200));}
+  if(res.status===204)return null;
+  const txt=await res.text();
+  if(!txt||!txt.trim())return null;
+  try{return JSON.parse(txt);}catch(e){return null;}
+}
+
+// TILE HELPERS
+function isRm(gi){return!!(tiles[gi]&&tiles[gi].removed);}
+function setRm(gi,by){tiles[gi]={removed:true,removedBy:by,layer:currentLayer};}
+function cntLayer(l){
+  const s=(l-1)*TILES_PER_LAYER,e=s+TILES_PER_LAYER;let c=0;
+  for(const k in tiles){const ki=+k;if(ki>=s&&ki<e)c++;}
+  return c;
+}
+// Cached count for current layer (reset on layer change)
+let _layerCountCache=-1,_layerCountLayer=-1;
+function cntLayerCached(){
+  if(_layerCountLayer!==currentLayer){_layerCountLayer=currentLayer;_layerCountCache=cntLayer(currentLayer);}
+  return _layerCountCache;
+}
+function invalidateLayerCache(){_layerCountCache=-1;_layerCountLayer=-1;}
+
+// JOIN
+document.getElementById('usernameInput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
+function joinGame(){
+  const v=document.getElementById('usernameInput').value.trim().toUpperCase();
+  if(!v||v.length<2){alert('Enter a name (min 2 chars)!');return;}
+  username=v;localStorage.setItem('cubeUsername',username);
+  document.getElementById('usernameGate').style.display='none';
+  document.getElementById('playerDisplay').innerText=username;
+  initCanvas();tiles={};
+  loadShopState();updateCoinDisplay();renderInventory();renderPassiveBadges();
+  updateStats();
+  loadAll();
+  setInterval(loadAll,3000);
+  loadHof();
+  // Seed and load treasures for current layer
+  seedTreasuresForLayer(currentLayer).then(()=>loadTreasuresForLayer(currentLayer));
+  startPresence();
+}
+
+// CANVAS
+function initCanvas(){
+  canvas=document.getElementById('cubeCanvas');ctx=canvas.getContext('2d');
+  TILE_SIZE=8;canvas.width=TILE_SIZE*GRID;canvas.height=TILE_SIZE*GRID;
+  canvas.style.width=canvas.width+'px';canvas.style.height=canvas.height+'px';
+  offscreen=document.createElement('canvas');offscreen.width=canvas.width;offscreen.height=canvas.height;
+  offCtx=offscreen.getContext('2d');
+  canvas.addEventListener('click',onCanvasClick);
+  canvas.addEventListener('mousemove',onMouseMove);
+  canvas.addEventListener('mouseleave',()=>{hoveredTile=-1;fullRedrawNeeded=true;redraw();});
+  canvas.addEventListener('mousedown',e=>{if(e.button===1||e.altKey){isPanning=true;panStartX=e.clientX;panStartY=e.clientY;panPX=panX;panPY=panY;e.preventDefault();}});
+  document.addEventListener('mousemove',e=>{if(!isPanning)return;panX=panPX+(e.clientX-panStartX);panY=panPY+(e.clientY-panStartY);applyZoom();});
+  document.addEventListener('mouseup',e=>{if(e.button===1||!e.altKey)isPanning=false;});
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const wrap=document.getElementById('canvasWrap'),rect=wrap.getBoundingClientRect();
+    const mx=e.clientX-rect.left-panX,my=e.clientY-rect.top-panY;
+    const f=e.deltaY<0?1.1:0.9,nz=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,zoomLevel*f));
+    panX-=mx*(nz/zoomLevel-1);panY-=my*(nz/zoomLevel-1);zoomLevel=nz;applyZoom();
+  },{passive:false});
+  window.addEventListener('resize',resetZoom);
+  requestAnimationFrame(()=>requestAnimationFrame(resetZoom));
+}
+function applyZoom(){
+  document.getElementById('canvasPan').style.transform=`translate(${panX}px,${panY}px) scale(${zoomLevel})`;
+  document.getElementById('zoomLabel').innerText=Math.round(zoomLevel*100)+'%';
+  fullRedrawNeeded=true;redraw();
+}
+function zoomIn(){const w=document.getElementById('canvasWrap'),cx=w.clientWidth/2,cy=w.clientHeight/2,nz=Math.min(MAX_ZOOM,zoomLevel*1.25);panX=cx-(cx-panX)*(nz/zoomLevel);panY=cy-(cy-panY)*(nz/zoomLevel);zoomLevel=nz;applyZoom();}
+function zoomOut(){const w=document.getElementById('canvasWrap'),cx=w.clientWidth/2,cy=w.clientHeight/2,nz=Math.max(MIN_ZOOM,zoomLevel*0.8);panX=cx-(cx-panX)*(nz/zoomLevel);panY=cy-(cy-panY)*(nz/zoomLevel);zoomLevel=nz;applyZoom();}
+function resetZoom(){const w=document.getElementById('canvasWrap');if(!w||!canvas)return;const fw=w.clientWidth,fh=w.clientHeight,fs=Math.min((fw-20)/canvas.width,(fh-20)/canvas.height);zoomLevel=fs;panX=(fw-canvas.width*zoomLevel)/2;panY=(fh-canvas.height*zoomLevel)/2;applyZoom();}
+
+// RENDER
+function drawTile(c2,li,col,hov){
+  const tx=(li%GRID)*TILE_SIZE,ty=Math.floor(li/GRID)*TILE_SIZE;
+  const gi=(currentLayer-1)*TILES_PER_LAYER+li;
+  if(isRm(gi)){
+    if(currentLayer<TOTAL_LAYERS){const nc=LC(currentLayer);c2.fillStyle=nc.base;c2.fillRect(tx,ty,TILE_SIZE,TILE_SIZE);c2.fillStyle='rgba(0,0,0,0.2)';c2.fillRect(tx+1,ty+1,TILE_SIZE-2,TILE_SIZE-2);}
+    else{c2.fillStyle='#000';c2.fillRect(tx,ty,TILE_SIZE,TILE_SIZE);}
+  }else{
+    c2.fillStyle=hov?col.hi:col.base;c2.fillRect(tx,ty,TILE_SIZE,TILE_SIZE);
+    c2.fillStyle='rgba(255,255,255,0.1)';c2.fillRect(tx,ty,TILE_SIZE,1);c2.fillRect(tx,ty,1,TILE_SIZE);
+    c2.fillStyle='rgba(0,0,0,0.25)';c2.fillRect(tx,ty+TILE_SIZE-1,TILE_SIZE,1);c2.fillRect(tx+TILE_SIZE-1,ty,1,TILE_SIZE);
+    if(hov){c2.strokeStyle=col.hi;c2.lineWidth=2;c2.globalAlpha=0.8;c2.strokeRect(tx+1,ty+1,TILE_SIZE-2,TILE_SIZE-2);c2.globalAlpha=1;}
+  }
+}
+function redraw(){
+  if(!ctx||!offscreen)return;
+  const col=LC(currentLayer-1),wrap=document.getElementById('canvasWrap');
+  if(!wrap)return;
+  if(fullRedrawNeeded){
+    const vx1=Math.max(0,Math.floor(-panX/(TILE_SIZE*zoomLevel))),vy1=Math.max(0,Math.floor(-panY/(TILE_SIZE*zoomLevel)));
+    const vx2=Math.min(GRID,Math.ceil((-panX+wrap.clientWidth)/(TILE_SIZE*zoomLevel))),vy2=Math.min(GRID,Math.ceil((-panY+wrap.clientHeight)/(TILE_SIZE*zoomLevel)));
+    const buf=3;
+    offCtx.fillStyle=col.base;offCtx.fillRect(0,0,offscreen.width,offscreen.height);
+    for(let r=Math.max(0,vy1-buf);r<Math.min(GRID,vy2+buf);r++)
+      for(let c=Math.max(0,vx1-buf);c<Math.min(GRID,vx2+buf);c++)
+        drawTile(offCtx,r*GRID+c,col,r*GRID+c===hoveredTile);
+    const gs=(currentLayer-1)*TILES_PER_LAYER;
+    for(const k in tiles){const ki=+k;if(ki<gs||ki>=gs+TILES_PER_LAYER)continue;const li=ki-gs,row=Math.floor(li/GRID),c=li%GRID;if(row<vy1-buf||row>vy2+buf||c<vx1-buf||c>vx2+buf)drawTile(offCtx,li,col,false);}
+    // Treasure overlay — gold shimmer on hidden treasure tiles (only when reveal active)
+    if(window._revealActive){
+      offCtx.fillStyle='rgba(255,215,0,0.35)';
+      for(const k in knownTreasures){
+        const gi=+k,gs2=(currentLayer-1)*TILES_PER_LAYER;
+        if(gi<gs2||gi>=gs2+TILES_PER_LAYER)continue;
+        if(isRm(gi))continue;
+        const li2=gi-gs2,tx2=(li2%GRID)*TILE_SIZE,ty2=Math.floor(li2/GRID)*TILE_SIZE;
+        offCtx.fillRect(tx2+1,ty2+1,TILE_SIZE-2,TILE_SIZE-2);
+        offCtx.fillStyle='rgba(255,215,0,0.9)';
+        offCtx.fillRect(tx2+TILE_SIZE/2-1,ty2+TILE_SIZE/2-1,2,2);
+        offCtx.fillStyle='rgba(255,215,0,0.35)';
+      }
+    }
+    offCtx.strokeStyle='rgba(0,0,0,0.3)';offCtx.lineWidth=1;
+    for(let x=Math.max(0,vx1-buf);x<=Math.min(GRID,vx2+buf);x++){offCtx.beginPath();offCtx.moveTo(x*TILE_SIZE,0);offCtx.lineTo(x*TILE_SIZE,canvas.height);offCtx.stroke();}
+    for(let y=Math.max(0,vy1-buf);y<=Math.min(GRID,vy2+buf);y++){offCtx.beginPath();offCtx.moveTo(0,y*TILE_SIZE);offCtx.lineTo(canvas.width,y*TILE_SIZE);offCtx.stroke();}
+    fullRedrawNeeded=false;dirtyTiles.clear();
+  }else{for(const i of dirtyTiles)drawTile(offCtx,i,col,i===hoveredTile);dirtyTiles.clear();}
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(offscreen,0,0);
+}
+
+// MOUSE
+function getTile(e){
+  const rect=canvas.getBoundingClientRect(),sx=canvas.width/rect.width,sy=canvas.height/rect.height;
+  const x=(e.clientX-rect.left)*sx,y=(e.clientY-rect.top)*sy;
+  const c=Math.floor(x/TILE_SIZE),r=Math.floor(y/TILE_SIZE);
+  return(c<0||c>=GRID||r<0||r>=GRID)?-1:r*GRID+c;
+}
+function onMouseMove(e){
+  const t=getTile(e);
+  if(t!==hoveredTile){const p=hoveredTile;hoveredTile=t;if(p>=0)dirtyTiles.add(p);if(t>=0)dirtyTiles.add(t);redraw();}
+  if(window._revealActive&&t>=0){const gi=(currentLayer-1)*TILES_PER_LAYER+t,tile=tiles[gi];tile&&tile.removedBy?showBanner('🔦 Chipped by: '+tile.removedBy,0):hideBanner();}
+}
+function onCanvasClick(e){
+  if(isWinner)return;
+  const li=getTile(e);if(li<0)return;
+  const gi=(currentLayer-1)*TILES_PER_LAYER+li;
+  if(window._megaBombArmed&&activePowerups.megaBomb){activateMegaBomb(li);window._megaBombArmed=false;renderInventory();return;}
+  if(window._bombArmed&&activePowerups.bomb){activateBomb(li);window._bombArmed=false;renderInventory();return;}
+  if(isRm(gi))return;
+  if(frenzyTimeLeft>0){
+    const ex=window._ultraFrenzyActive?5:(1+(typeof activePowerups.frenzy==='number'?Math.max(1,activePowerups.frenzy):1));
+    performChip(gi);
+    for(let i=1;i<ex;i++){const s=(currentLayer-1)*TILES_PER_LAYER,c=[];for(let j=s;j<s+TILES_PER_LAYER;j++)if(!isRm(j))c.push(j);if(c.length)performChip(c[Math.floor(Math.random()*c.length)]);}
+    return;
+  }
+  // Shovel: break NxN area around clicked tile
+  const _godBonus=window._godModeActive?4:0; const sLvl=(passiveLevels.shovel||0)+(window._commShovel||0)+_godBonus;
+  if(sLvl>0){
+    const radius=sLvl; // lvl1=1(2x2 area), lvl2=1(3x3)... side=lvl+1
+    const side=sLvl+1;
+    const half=Math.floor(side/2);
+    const row=Math.floor(li/GRID),col=li%GRID;
+    const toChip=[];
+    for(let dr=-(half);dr<side-half;dr++){
+      for(let dc=-(half);dc<side-half;dc++){
+        const nr=row+dr,nc=col+dc;
+        if(nr>=0&&nr<GRID&&nc>=0&&nc<GRID){
+          const ni=(currentLayer-1)*TILES_PER_LAYER+nr*GRID+nc;
+          if(!isRm(ni))toChip.push(ni);
+        }
+      }
+    }
+    for(const ngi of toChip)performChip(ngi,false);
+  }else{
+    performChip(gi);
+  }
+}
+
+// CHIP
+async function performChip(gi,mag=true){
+  if(isRm(gi))return;
+  setRm(gi,username);totalChips++;earnCoins(1);invalidateLayerCache();checkTreasure(gi);
+  const li=gi-(currentLayer-1)*TILES_PER_LAYER;
+  dirtyTiles.add(li);redraw();
+  const tx=(li%GRID)*TILE_SIZE+TILE_SIZE/2,ty=Math.floor(li/GRID)*TILE_SIZE+TILE_SIZE/2;
+  const rect=canvas.getBoundingClientRect();
+  spawnChips(rect.left+tx*(rect.width/canvas.width),rect.top+ty*(rect.height/canvas.height),LC(currentLayer-1).base);
+  spawnChipName(rect, tx, ty, username);
+  if(mag&&passiveLevels.magnet>0){
+    const ch=Math.min(0.9,0.25+passiveLevels.magnet*0.15);
+    if(Math.random()<ch){
+      const r=Math.floor(li/GRID),c=li%GRID,nb=[];
+      [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<GRID&&nc>=0&&nc<GRID){const ni=(currentLayer-1)*TILES_PER_LAYER+nr*GRID+nc;if(!isRm(ni))nb.push(ni);}});
+      if(nb.length)performChip(nb[Math.floor(Math.random()*nb.length)],false);
+    }
+  }
+  updateStats();checkLayerComplete();
+  try{
+    await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify({id:gi,layer:currentLayer,removed_by:username,removed_at:new Date().toISOString()})});
+    const lr=cntLayer(currentLayer),tr=TOTAL_TILES-((currentLayer-1)*TILES_PER_LAYER+lr);
+    await sbFetch('cube_stats?id=eq.1',{method:'PATCH',prefer:'',body:JSON.stringify({total_clicks:totalChips,tiles_remaining:tr,last_clicker:username})});
+  }catch(err){
+    console.error('Sync:',err.message);
+    setTimeout(async()=>{try{await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify({id:gi,layer:currentLayer,removed_by:username,removed_at:new Date().toISOString()})});}catch(e){}},1500);
+  }
+}
+
+// LOAD STATE
+async function loadState(){
+  try{
+    const stats=await sbFetch('cube_stats?id=eq.1&select=*',{method:'GET',prefer:''});
+    if(stats&&stats.length)totalChips=parseInt(stats[0].total_clicks)||0;
+    let all=[],off=0;
+    while(true){
+      const pg=await sbFetch(`cube_tiles?removed_by=not.is.null&select=id,layer,removed_by&limit=1000&offset=${off}`,{method:'GET',prefer:''});
+      if(!pg||!pg.length)break;all=all.concat(pg);if(pg.length<1000)break;off+=1000;
+    }
+    showOtherChipNames(all);
+    for(const r of all)if(r.id>=0)tiles[r.id]={removed:true,removedBy:r.removed_by,layer:r.layer};
+    // Recalc layer: check if current layer is fully cleared
+    // (only scan forward, don't re-scan all 10000 layers)
+    while(currentLayer<TOTAL_LAYERS){
+      const s=(currentLayer-1)*TILES_PER_LAYER;let allC=true;
+      for(let i=s;i<s+TILES_PER_LAYER;i++){if(!isRm(i)){allC=false;break;}}
+      if(allC)currentLayer++;else break;
+    }
+    invalidateLayerCache();fullRedrawNeeded=true;redraw();updateStats();
+  }catch(e){console.error('Load:',e.message);}
+}
+
+async function loadAll(){
+  await loadState();
+  await loadCommunityBuffs();
+  loadOnlinePlayers();
+}
+
+// STATS
+function updateStats(){
+  const lr=cntLayer(currentLayer),ll=TILES_PER_LAYER-lr,pct=Math.floor((lr/TILES_PER_LAYER)*100);
+  const col=LC(currentLayer-1);
+  document.getElementById('statTiles').innerText=ll.toLocaleString();
+  document.getElementById('statLayer').innerText=currentLayer+' / '+TOTAL_LAYERS;
+  document.getElementById('statTotal').innerText=totalChips.toLocaleString();
+  document.getElementById('statPct').innerText=pct+'%';
+  const totalLeft=TOTAL_TILES-((currentLayer-1)*TILES_PER_LAYER+lr);
+  const tlEl=document.getElementById('statTotalLeft');
+  if(tlEl)tlEl.innerText=totalLeft>=1e6?(totalLeft/1e6).toFixed(2)+'M':totalLeft.toLocaleString();
+  ['layerColorDot','layerColorDot2'].forEach(id=>{const d=document.getElementById(id);if(d){d.style.background=col.hi;d.style.boxShadow='0 0 8px '+col.hi;}});
+  const nm=document.getElementById('layerNameText');if(nm){nm.innerText='LAYER '+currentLayer+' — '+col.name.toUpperCase();nm.style.color=col.hi;nm.style.textShadow='0 0 10px '+col.hi;}
+  const fill=document.getElementById('layerProgressFill');if(fill){const dp=((currentLayer-1)/TOTAL_LAYERS)*100;fill.style.width=Math.max(0.01,dp)+'%';fill.style.background=col.hi;fill.style.boxShadow='0 0 8px '+col.hi;}
+  const lbl=document.getElementById('layerDepthLabel');if(lbl)lbl.innerText='L'+currentLayer+'/'+TOTAL_LAYERS;
+  document.getElementById('tickerLayer').innerText=col.name+' LAYER';
+}
+
+// LAYER COMPLETE
+async function checkLayerComplete(){
+  const s=(currentLayer-1)*TILES_PER_LAYER;let allG=true;
+  for(let i=s;i<s+TILES_PER_LAYER;i++){if(!isRm(i)){allG=false;break;}}
+  if(!allG)return;
+  try{await sbFetch('cube_hof',{method:'POST',body:JSON.stringify({username,layer_broken:currentLayer,total_clicks_at_win:totalChips})});}catch(e){}
+  if(currentLayer===TOTAL_LAYERS){isWinner=true;setTimeout(()=>showWinner(username),800);}
+  else{flashLayer();await new Promise(r=>setTimeout(r,600));currentLayer++;tiles={};fullRedrawNeeded=true;redraw();updateStats();loadHof();}
+}
+function flashLayer(){const col=LC(currentLayer-1),f=document.getElementById('layerFlash');f.style.background=col.hi;f.classList.add('flash');setTimeout(()=>{f.style.transition='opacity 0.6s';f.style.opacity='0';},100);setTimeout(()=>{f.style.opacity='';f.style.transition='';f.classList.remove('flash');},700);}
+
+// WINNER
+function showWinner(n){document.getElementById('winnerNameDisplay').innerText=n;document.getElementById('winnerScreen').style.display='flex';spawnConfetti();loadHof();}
+function closeWinner(){document.getElementById('winnerScreen').style.display='none';currentLayer=1;tiles={};sbFetch('cube_stats?id=eq.1',{method:'PATCH',prefer:'',body:JSON.stringify({total_clicks:0,tiles_remaining:TOTAL_TILES,last_clicker:''})}).catch(()=>{});fullRedrawNeeded=true;redraw();updateStats();}
+
+// HOF
+async function loadHof(){try{const d=await sbFetch('cube_hof?order=won_at.desc&limit=20',{method:'GET',prefer:''});const el=document.getElementById('hofEntries');if(!d||!d.length){el.innerHTML='<div style="color:#1a1a1a;text-align:center;padding:30px;font-size:0.8em;">No legends yet.</div>';return;}el.innerHTML=d.map((h,i)=>`<div class="hof-card ${i===0?'top':''}"><div class="hof-name">${i===0?'👑 ':'🏆 '}${escH(h.username)}</div><div class="hof-meta">LAYER ${h.layer_broken} — ${LC(h.layer_broken-1).name}<br>${Number(h.total_clicks_at_win||0).toLocaleString()} chips • ${new Date(h.won_at).toLocaleDateString()}</div></div>`).join('');}catch(e){}}
+function toggleHof(){document.getElementById('hofPanel').classList.toggle('open');if(document.getElementById('hofPanel').classList.contains('open'))loadHof();}
+
+// SHOP
+const POWERUPS=[
+  {id:'bomb',icon:'💣',name:'Tile Bomb',basePrice:15,priceScale:1.8,desc:l=>`Removes 3×3 area. ${l} charge${l!==1?'s':''} held`},
+  {id:'frenzy',icon:'⚡',name:'Chip Frenzy',basePrice:20,priceScale:2.0,desc:l=>`For 15s each click removes ${2+l} tiles`},
+  {id:'nuke',icon:'☢️',name:'Layer Nuke',basePrice:500,priceScale:3.5,desc:l=>`Destroys ${l*50} random tiles instantly. ${l} charge${l!==1?'s':''}`},
+  {id:'timewarp',icon:'⏩',name:'Time Warp',basePrice:80,priceScale:2.5,desc:l=>`Auto-chipper runs 5x faster for 30s. ${l} charge${l!==1?'s':''}`},
+  {id:'reveal',icon:'🔦',name:'Reveal Mode',basePrice:10,priceScale:1.5,desc:l=>`Hover to see who chipped tiles. ${l} charge${l!==1?'s':''}`},
+  {id:'goldRush',icon:'✨',name:'Gold Rush',basePrice:60,priceScale:2.2,desc:l=>`All chips give 5x coins for 20s. ${l} charge${l!==1?'s':''}`},
+];
+const SHOVEL_SIZES=[0,4,9,16,25,36]; // lvl0=no bonus, lvl1=2x2, lvl2=3x3...lvl5=6x6
+const PASSIVES=[
+  {id:'autoChipper',icon:'🤖',name:'Auto Chipper',basePrice:30,priceScale:2.2,maxLvl:10,desc:l=>l===0?'Auto-chips 1 tile every 5s':`Every ${Math.max(0.5,5-l*0.5).toFixed(1)}s → ${Math.max(0.5,5-(l+1)*0.5).toFixed(1)}s`},
+  {id:'shovel',icon:'⛏️',name:'Shovel',basePrice:40,priceScale:2.8,maxLvl:5,desc:l=>l===0?'Click breaks a 2×2 area (4 tiles)':`${['','2×2','3×3','4×4','5×5','6×6'][l]} area (${SHOVEL_SIZES[l]} tiles) → ${['','2×2','3×3','4×4','5×5','6×6'][Math.min(5,l+1)]} next`},
+  {id:'magnet',icon:'🧲',name:'Magnet',basePrice:20,priceScale:2.0,maxLvl:8,desc:l=>l===0?'25% chance to remove adjacent tile':`${Math.min(90,25+l*15)}% adjacent chance → ${Math.min(90,25+(l+1)*15)}% next`},
+  {id:'coinBoost',icon:'🪙',name:'Coin Boost',basePrice:50,priceScale:2.5,maxLvl:8,desc:l=>l===0?'+1 extra coin per chip':`+${l+1} coins per chip → +${l+2} next`},
+  {id:'speedChip',icon:'⚡',name:'Speed Chip',basePrice:60,priceScale:2.2,maxLvl:5,desc:l=>l===0?'Auto-chip fires 2x per interval':`Auto-chip fires ${l+1}x per interval`},
+];
+function gp(item,lvl){return Math.round(item.basePrice*Math.pow(item.priceScale,lvl));}
+
+function loadShopState(){
+  coins=parseInt(localStorage.getItem('cubeCoins_'+username)||'0');
+  const defPassives={autoChipper:0,shovel:0,magnet:0,coinBoost:0,speedChip:0};
+  const defPowerups={bomb:false,frenzy:0,nuke:0,timewarp:0,reveal:false,goldRush:0};
+  const storedP=localStorage.getItem('cubePassives_'+username);
+  const storedPU=localStorage.getItem('cubePowerups_'+username);
+  passiveLevels={...defPassives,...(storedP?JSON.parse(storedP):{})};
+  activePowerups={...defPowerups,...(storedPU?JSON.parse(storedPU):{})};
+  if(passiveLevels.autoChipper>0)startAutoChip();
+}
+function saveShopState(){
+  if(!username)return;
+  localStorage.setItem('cubeCoins_'+username,coins);
+  localStorage.setItem('cubePassives_'+username,JSON.stringify(passiveLevels));
+  localStorage.setItem('cubePowerups_'+username,JSON.stringify(activePowerups));
+}
+function earnCoins(n){
+  const boost=passiveLevels.coinBoost||0;
+  let mult=window._goldRushActive?5:1;
+  if(window._commDoubleCoins) mult*=2;
+  let total=n*(1+boost)*mult;
+  if(window._commCoinStorm&&Math.random()<0.2) total+=50;
+  coins+=total;
+  saveShopState();updateCoinDisplay();
+}
+function updateCoinDisplay(){
+  const cd=document.getElementById('coinDisplay');
+  if(cd)cd.innerText=coins.toLocaleString();
+  const sd=document.getElementById('shopCoinDisplay');if(sd)sd.innerText=coins.toLocaleString();
+}
+function openShop(){updateCoinDisplay();rShop('shopPowerups',POWERUPS,'p');rShop('shopPassives',PASSIVES,'s');document.getElementById('shopModal').style.display='flex';}
+function closeShop(){document.getElementById('shopModal').style.display='none';}
+function rShop(cid,items,type){
+  const el=document.getElementById(cid);
+  el.innerHTML=items.map(item=>{
+    const lvl=type==='s'?(passiveLevels[item.id]||0):0;
+    const held=type==='p'?(typeof activePowerups[item.id]==='number'?activePowerups[item.id]:(activePowerups[item.id]?1:0)):0;
+    const price=gp(item,type==='s'?lvl:held),ca=coins>=price,maxed=type==='s'&&item.maxLvl&&lvl>=item.maxLvl;
+    return `<div style="display:flex;align-items:center;gap:14px;background:rgba(255,215,0,0.03);border:1px solid #1a1500;border-radius:10px;padding:14px;margin-bottom:8px;">
+      <span style="font-size:2em;">${item.icon}</span>
+      <div style="flex:1;"><div style="color:white;font-weight:bold;font-size:0.9em;margin-bottom:3px;">${item.name}${type==='s'&&lvl>0?`<span style="color:var(--green);font-size:0.75em;margin-left:6px;">LVL ${lvl}</span>`:''}${held>0?`<span style="color:var(--green);font-size:0.75em;margin-left:6px;">×${held}</span>`:''}</div>
+      <div style="color:#444;font-size:0.75em;">${item.desc(type==='s'?lvl:held)}</div></div>
+      <button onclick="${type==='s'?`buyPassive('${item.id}')`:`buyPowerup('${item.id}')`}" style="background:${ca&&!maxed?'var(--gold)':'#1a1a00'};color:${ca&&!maxed?'#000':'#444'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${(!ca||maxed)?'disabled':''}>${maxed?'MAX':'🪙 '+price.toLocaleString()}</button>
+    </div>`;
+  }).join('');
+}
+function buyPassive(id){
+  const item=PASSIVES.find(i=>i.id===id);if(!item)return;
+  const lvl=passiveLevels[id]||0;
+  if(item.maxLvl&&lvl>=item.maxLvl)return;
+  const price=gp(item,lvl);
+  if(coins<price)return;
+  coins-=price;passiveLevels[id]=lvl+1;
+  saveShopState();updateCoinDisplay();renderPassiveBadges();renderInventory();
+  if(id==='autoChipper'||id==='speedChip')startAutoChip();
+  openShop();
+}
+function buyPowerup(id){
+  const item=POWERUPS.find(i=>i.id===id),held=typeof activePowerups[id]==='number'?activePowerups[id]:(activePowerups[id]?1:0),price=gp(item,held);
+  if(coins<price)return;coins-=price;activePowerups[id]=(typeof activePowerups[id]==='number'?activePowerups[id]:0)+1;saveShopState();updateCoinDisplay();renderInventory();openShop();
+}
+function renderPassiveBadges(){
+  const b=document.getElementById('passiveBadges');if(!b)return;
+  const lb={
+    autoChipper:l=>`🤖 ${Math.max(0.5,5-l*0.5).toFixed(1)}s`,
+    shovel:l=>`⛏️ ${['','2×2','3×3','4×4','5×5','6×6'][l]}`,
+    magnet:l=>`🧲 ${Math.min(90,25+l*15)}%`,
+    coinBoost:l=>`🪙 +${l+1}/chip`,
+    speedChip:l=>`⚡ ${l+1}x auto`,
+  };
+  b.innerHTML=Object.entries(passiveLevels).filter(([,v])=>v>0).map(([k,v])=>lb[k]?`<div style="background:rgba(0,255,0,0.06);border:1px solid rgba(0,255,0,0.15);border-radius:20px;padding:2px 8px;font-size:0.65em;color:var(--green);letter-spacing:1px;">${lb[k](v)}</div>`:'').join('');
+}
+
+// INVENTORY
+function renderInventory(){
+  const bar=document.getElementById('invSlots');if(!bar)return;
+  const held=[];POWERUPS.forEach(p=>{const cnt=typeof activePowerups[p.id]==='number'?activePowerups[p.id]:(activePowerups[p.id]?1:0);if(cnt>0)held.push({...p,cnt});});
+  let h='';
+  for(let i=0;i<8;i++){
+    if(held[i]){const p=held[i],ia=(p.id==='bomb'&&window._bombArmed)||(p.id==='frenzy'&&frenzyTimeLeft>0)||(p.id==='reveal'&&window._revealActive);h+=`<div class="inv-slot has-item ${ia?'active-powerup':''}" onclick="useItem('${p.id}')" title="${p.name} (×${p.cnt})">${p.icon}<span class="slot-count">${p.cnt}</span></div>`;}
+    else h+=`<div class="inv-slot"><span style="color:#111;font-size:0.7em;">·</span></div>`;
+  }
+  bar.innerHTML=h;
+}
+function useItem(id){
+  const cnt=typeof activePowerups[id]==='number'?activePowerups[id]:(activePowerups[id]?1:0);if(!cnt)return;
+  if(id==='bomb'){window._bombArmed=!window._bombArmed;showBanner(window._bombArmed?'💣 BOMB ARMED — click a tile!':'💣 Disarmed',window._bombArmed?0:1500);}
+  else if(id==='megaBomb'){window._megaBombArmed=!window._megaBombArmed;showBanner(window._megaBombArmed?'🌋 MEGA BOMB ARMED — click to OBLITERATE!':'🌋 Disarmed',window._megaBombArmed?0:1500);}
+  else if(id==='frenzy'){if(frenzyTimeLeft>0)return;activateFrenzy();}
+  else if(id==='ultraFrenzy'){if(window._ultraFrenzyActive)return;activateUltraFrenzy();}
+  else if(id==='reveal'){if(window._revealActive)return;activateReveal();}
+  else if(id==='nuke')activateNuke();
+  else if(id==='timewarp'){if(window._timewarpActive)return;activateTimewarp();}
+  else if(id==='goldRush'){if(window._goldRushActive)return;activateGoldRush();}
+  else if(id==='godMode'){if(window._godModeActive)return;activateGodMode();}
+  else if(id==='layerSkip')activateLayerSkip();
+  renderInventory();
+}
+setInterval(renderInventory,500);
+
+// POWERUPS
+async function activateBomb(li){
+  const cnt=typeof activePowerups.bomb==='number'?activePowerups.bomb:1,r=Math.floor(li/GRID),c=li%GRID,toRm=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const nr=r+dr,nc=c+dc;if(nr>=0&&nr<GRID&&nc>=0&&nc<GRID){const gi=(currentLayer-1)*TILES_PER_LAYER+nr*GRID+nc;if(!isRm(gi))toRm.push(gi);}}
+  for(let i=0;i<toRm.length;i++){setRm(toRm[i],username);totalChips++;earnCoins(1);dirtyTiles.add(toRm[i]-(currentLayer-1)*TILES_PER_LAYER);if(i%5===0)redraw();}
+  redraw();invalidateLayerCache();activePowerups.bomb=Math.max(0,cnt-1)||false;saveShopState();renderInventory();
+  showBanner(`💣 BOMB — ${toRm.length} tiles! (${Math.max(0,cnt-1)} left)`,2500);
+  try{const now=new Date().toISOString(),rows=toRm.map(gi=>({id:gi,layer:currentLayer,removed_by:username,removed_at:now}));for(let c=0;c<rows.length;c+=50)await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify(rows.slice(c,c+50))});const lr=cntLayer(currentLayer);await sbFetch('cube_stats?id=eq.1',{method:'PATCH',prefer:'',body:JSON.stringify({total_clicks:totalChips,tiles_remaining:TOTAL_TILES-((currentLayer-1)*TILES_PER_LAYER+lr),last_clicker:username})});}catch(e){console.error('Bomb sync:',e.message);}
+  updateStats();checkLayerComplete();
+}
+function activateFrenzy(){
+  const lvl=typeof activePowerups.frenzy==='number'?activePowerups.frenzy:1;
+  frenzyTimeLeft=15000;activePowerups.frenzy=Math.max(0,lvl-1)||false;saveShopState();
+  if(frenzyInterval)clearInterval(frenzyInterval);
+  frenzyInterval=setInterval(()=>{frenzyTimeLeft-=100;showBanner(`⚡ FRENZY — ${(frenzyTimeLeft/1000).toFixed(1)}s`,200);if(frenzyTimeLeft<=0){clearInterval(frenzyInterval);frenzyInterval=null;hideBanner();}},100);
+}
+function activateReveal(){
+  const lvl=typeof activePowerups.reveal==='number'?activePowerups.reveal:1;
+  activePowerups.reveal=Math.max(0,lvl-1)||false;saveShopState();window._revealActive=true;
+  showBanner('🔦 REVEAL — hover tiles to see who chipped them',0);
+  setTimeout(()=>{window._revealActive=false;hideBanner();},20000);renderInventory();
+}
+function showBanner(msg,dur){const b=document.getElementById('powerupBanner');b.innerText=msg;b.style.display='block';if(dur&&dur<5000){clearTimeout(b._t);b._t=setTimeout(hideBanner,dur);}}
+function hideBanner(){document.getElementById('powerupBanner').style.display='none';}
+function startAutoChip(){
+  if(autoChipInterval)clearInterval(autoChipInterval);
+  if((passiveLevels.autoChipper||0)===0)return;
+  const lvl=passiveLevels.autoChipper;
+  const basems=Math.max(500,(5-(lvl-1)*0.5)*1000);
+  const speedMult=(window._timewarpActive?5:1)*(window._commMegaSpeed?3:1)*(1+(passiveLevels.speedChip||0));
+  const ms=Math.max(100,Math.floor(basems/speedMult));
+  autoChipInterval=setInterval(()=>{
+    if(isWinner)return;
+    const s=(currentLayer-1)*TILES_PER_LAYER,c=[];
+    for(let i=s;i<s+TILES_PER_LAYER;i++)if(!isRm(i))c.push(i);
+    if(!c.length)return;
+    performChip(c[Math.floor(Math.random()*c.length)],false);
+  },ms);
+}
+
+
+function activateNuke(){
+  const cnt=typeof activePowerups.nuke==='number'?activePowerups.nuke:1;
+  const amount=cnt*50;
+  const s=(currentLayer-1)*TILES_PER_LAYER;
+  const cands=[];for(let i=s;i<s+TILES_PER_LAYER;i++)if(!isRm(i))cands.push(i);
+  const picks=cands.sort(()=>Math.random()-0.5).slice(0,Math.min(amount,cands.length));
+  picks.forEach(gi=>{setRm(gi,username);totalChips++;earnCoins(1);dirtyTiles.add(gi-s);});
+  invalidateLayerCache();fullRedrawNeeded=true;redraw();
+  activePowerups.nuke=Math.max(0,cnt-1)||false;saveShopState();renderInventory();
+  showBanner(`☢️ NUKE — ${picks.length} tiles obliterated!`,3000);
+  updateStats();checkLayerComplete();
+  // Batch sync
+  const now=new Date().toISOString(),rows=picks.map(gi=>({id:gi,layer:currentLayer,removed_by:username,removed_at:now}));
+  (async()=>{for(let c=0;c<rows.length;c+=50)await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify(rows.slice(c,c+50))});})().catch(()=>{});
+}
+function activateTimewarp(){
+  const cnt=typeof activePowerups.timewarp==='number'?activePowerups.timewarp:1;
+  activePowerups.timewarp=Math.max(0,cnt-1)||false;saveShopState();
+  window._timewarpActive=true;
+  if(passiveLevels.autoChipper>0)startAutoChip();
+  showBanner('⏩ TIME WARP — auto-chipper at 5× speed for 30s!',0);
+  setTimeout(()=>{window._timewarpActive=false;if(passiveLevels.autoChipper>0)startAutoChip();hideBanner();},30000);
+  renderInventory();
+}
+function activateGoldRush(){
+  const cnt=typeof activePowerups.goldRush==='number'?activePowerups.goldRush:1;
+  activePowerups.goldRush=Math.max(0,cnt-1)||false;saveShopState();
+  window._goldRushActive=true;
+  showBanner('✨ GOLD RUSH — 5× coins for 20s!',0);
+  setTimeout(()=>{window._goldRushActive=false;hideBanner();},20000);
+  renderInventory();
+}
+
+// ── LEGENDARY POWERUP ACTIVATORS ──────────────────────────────
+function activateUltraFrenzy(){
+  const cnt=+activePowerups.ultraFrenzy||1;
+  activePowerups.ultraFrenzy=Math.max(0,cnt-1)||false;saveShopState();
+  window._ultraFrenzyActive=true;frenzyTimeLeft=60000;
+  if(frenzyInterval)clearInterval(frenzyInterval);
+  frenzyInterval=setInterval(()=>{frenzyTimeLeft-=100;showBanner(`🌀 ULTRA FRENZY — ${(frenzyTimeLeft/1000).toFixed(1)}s ×5 TILES`,200);if(frenzyTimeLeft<=0){clearInterval(frenzyInterval);frenzyInterval=null;window._ultraFrenzyActive=false;hideBanner();}},100);
+  renderInventory();
+}
+
+function activateGodMode(){
+  const cnt=+activePowerups.godMode||1;
+  activePowerups.godMode=Math.max(0,cnt-1)||false;saveShopState();
+  window._godModeActive=true;
+  showBanner('👁️ GOD MODE ACTIVE — 10× CHIP AREA FOR 30s',0);
+  spawnConfetti();
+  setTimeout(()=>{window._godModeActive=false;hideBanner();renderInventory();},30000);
+  renderInventory();
+}
+
+async function activateMegaBomb(localIdx){
+  const cnt=+activePowerups.megaBomb||1;
+  const radius=3; // 7x7
+  const row=Math.floor(localIdx/GRID),col=localIdx%GRID,toRm=[];
+  for(let dr=-radius;dr<=radius;dr++)for(let dc=-radius;dc<=radius;dc++){const nr=row+dr,nc=col+dc;if(nr>=0&&nr<GRID&&nc>=0&&nc<GRID){const gi=(currentLayer-1)*TILES_PER_LAYER+nr*GRID+nc;if(!isRm(gi))toRm.push(gi);}}
+  for(let i=0;i<toRm.length;i++){setRm(toRm[i],username);totalChips++;earnCoins(1);dirtyTiles.add(toRm[i]-(currentLayer-1)*TILES_PER_LAYER);if(i%5===0)redraw();}
+  redraw();invalidateLayerCache();
+  activePowerups.megaBomb=Math.max(0,cnt-1)||false;saveShopState();renderInventory();
+  showBanner(`🌋 MEGA BOMB — ${toRm.length} TILES ANNIHILATED!`,3500);
+  spawnConfetti();
+  try{const now=new Date().toISOString(),rows=toRm.map(gi=>({id:gi,layer:currentLayer,removed_by:username,removed_at:now}));for(let c=0;c<rows.length;c+=50)await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify(rows.slice(c,c+50))});}catch(e){}
+  updateStats();checkLayerComplete();
+}
+
+async function activateLayerSkip(){
+  const cnt=+activePowerups.layerSkip||1;
+  activePowerups.layerSkip=Math.max(0,cnt-1)||false;saveShopState();renderInventory();
+  showBanner('🌌 LAYER SKIP — CLEARING ENTIRE LAYER...',0);
+  // Remove all remaining tiles in this layer
+  const start=(currentLayer-1)*TILES_PER_LAYER,toRm=[];
+  for(let i=start;i<start+TILES_PER_LAYER;i++)if(!isRm(i))toRm.push(i);
+  for(const gi of toRm){setRm(gi,username);totalChips++;earnCoins(0.1);} // small coins so no abuse
+  invalidateLayerCache();fullRedrawNeeded=true;redraw();updateStats();
+  try{const now=new Date().toISOString(),rows=toRm.map(gi=>({id:gi,layer:currentLayer,removed_by:username+'[SKIP]',removed_at:now}));for(let c=0;c<rows.length;c+=100)await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify(rows.slice(c,c+100))});}catch(e){}
+  hideBanner();
+  checkLayerComplete();
+}
+
+// FX
+function spawnChips(x,y,color){for(let i=0;i<8;i++){const c=document.createElement('div');c.className='chip-fx';const dx=(Math.random()-0.5)*80,dy=(Math.random()-0.5)*80+Math.random()*-40;c.style.cssText=`left:${x}px;top:${y}px;width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;background:${color};--dx:${dx}px;--dy:${dy}px;--rot:${Math.random()*360}deg;animation-duration:${0.4+Math.random()*0.3}s;`;document.body.appendChild(c);c.addEventListener('animationend',()=>c.remove());}}
+function spawnConfetti(){const cols=['#ffd700','#fff','#0f0','#ff69b4','#00cfff'];for(let i=0;i<100;i++){const c=document.createElement('div');c.className='conf';c.style.cssText=`left:${Math.random()*100}%;top:-20px;background:${cols[i%cols.length]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*2}s;border-radius:${Math.random()>0.5?'50%':'2px'};`;document.body.appendChild(c);c.addEventListener('animationend',()=>c.remove());}}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+
+// ══════════════════════════════════════════════════════════════
+// COMMUNITY BUFFS SYSTEM
+// Tables needed: cube_community_buffs, cube_treasures
+// ══════════════════════════════════════════════════════════════
+
+const COMM_BUFFS = [
+  { id:'doubleCoins',  icon:'💰', name:'Double Coins',       cost:200,  duration:5*60,  desc:'All players earn 2× coins for 5 minutes',        apply:()=>{window._commDoubleCoins=true;}  , expire:()=>{window._commDoubleCoins=false;} },
+  { id:'megaSpeed',    icon:'🚀', name:'Mega Speed',         cost:300,  duration:3*60,  desc:'Auto-chippers run 3× faster for 3 minutes',      apply:()=>{window._commMegaSpeed=true;if(passiveLevels.autoChipper>0)startAutoChip();}, expire:()=>{window._commMegaSpeed=false;if(passiveLevels.autoChipper>0)startAutoChip();} },
+  { id:'sharedShovel', icon:'⛏️', name:'Community Shovel',   cost:400,  duration:4*60,  desc:'Everyone gets +2×2 shovel area for 4 minutes',   apply:()=>{window._commShovel=2;},           expire:()=>{window._commShovel=0;} },
+  { id:'treasureRain', icon:'🌧️', name:'Treasure Rain',      cost:500,  duration:2*60,  desc:'Doubles treasure spawn rate for 2 minutes',      apply:()=>{window._commTreasureRain=true;},  expire:()=>{window._commTreasureRain=false;} },
+  { id:'groupFrenzy',  icon:'🔥', name:'Group Frenzy',       cost:600,  duration:60,    desc:'ALL players chip 3× per click for 1 minute',     apply:()=>{window._commFrenzy=true;},         expire:()=>{window._commFrenzy=false;} },
+  { id:'coinStorm',    icon:'⚡', name:'Coin Storm',         cost:800,  duration:3*60,  desc:'Every chip has 20% chance of +50 bonus coins',   apply:()=>{window._commCoinStorm=true;},      expire:()=>{window._commCoinStorm=false;} },
+];
+
+let activeCommunityBuffs = {}; // buffId -> expiresAt (ms timestamp)
+let commBuffInterval = null;
+
+function openCommShop(){
+  document.getElementById('commCoinDisplay').innerText=coins.toLocaleString();
+  renderCommBuffList();
+  renderCommActive();
+  document.getElementById('commShopModal').style.display='flex';
+}
+function closeCommShop(){ document.getElementById('commShopModal').style.display='none'; }
+
+function renderCommBuffList(){
+  const el = document.getElementById('commBuffList');
+  const now = Date.now();
+  el.innerHTML = COMM_BUFFS.map(b=>{
+    const active = activeCommunityBuffs[b.id] && activeCommunityBuffs[b.id] > now;
+    const ca = coins >= b.cost;
+    const mins = Math.floor(b.duration/60), secs = b.duration%60;
+    const durStr = mins > 0 ? `${mins}m${secs>0?secs+'s':''}` : `${secs}s`;
+    return `<div style="display:flex;align-items:center;gap:12px;background:${active?'rgba(0,200,255,0.06)':'rgba(0,200,255,0.02)'};border:1px solid ${active?'rgba(0,200,255,0.3)':'#0a1a1a'};border-radius:10px;padding:14px;margin-bottom:8px;">
+      <span style="font-size:2em;">${b.icon}</span>
+      <div style="flex:1;">
+        <div style="color:${active?'#00cfff':'white'};font-weight:bold;font-size:0.9em;margin-bottom:3px;">${b.name} <span style="color:#2a2a2a;font-size:0.7em;">${durStr}</span>${active?'<span style="color:#00cfff;font-size:0.7em;margin-left:8px;">● ACTIVE</span>':''}</div>
+        <div style="color:#2a2a2a;font-size:0.75em;">${b.desc}</div>
+      </div>
+      <button onclick="buyCommBuff('${b.id}')" style="background:${ca?'#00cfff':'#0a1a1a'};color:${ca?'#000':'#1a3a3a'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${!ca?'disabled':''}>🪙 ${b.cost.toLocaleString()}</button>
+    </div>`;
+  }).join('');
+}
+
+function renderCommActive(){
+  const el = document.getElementById('commActiveList');
+  const now = Date.now();
+  const active = COMM_BUFFS.filter(b=>activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]>now);
+  if(!active.length){ el.innerHTML='<div style="color:#1a1a1a;font-size:0.75em;letter-spacing:2px;">None active</div>'; return; }
+  el.innerHTML = active.map(b=>{
+    const rem = Math.max(0, Math.ceil((activeCommunityBuffs[b.id]-now)/1000));
+    const m=Math.floor(rem/60),s=rem%60;
+    return `<div style="display:flex;align-items:center;gap:8px;background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.15);border-radius:8px;padding:8px 12px;">
+      <span>${b.icon}</span>
+      <span style="flex:1;color:#00cfff;font-size:0.78em;letter-spacing:1px;">${b.name}</span>
+      <span style="color:#2a2a2a;font-size:0.72em;">${m}:${String(s).padStart(2,'0')}</span>
+    </div>`;
+  }).join('');
+}
+
+async function buyCommBuff(buffId){
+  const b = COMM_BUFFS.find(x=>x.id===buffId);
+  if(!b||coins<b.cost) return;
+  coins -= b.cost;
+  saveShopState(); updateCoinDisplay();
+  const expiresAt = new Date(Date.now()+b.duration*1000).toISOString();
+  try{
+    await sbFetch('cube_community_buffs',{method:'POST',body:JSON.stringify({buff_type:buffId,buff_name:b.name,activated_by:username,expires_at:expiresAt})});
+    showBanner(`${b.icon} ${b.name} activated — everyone benefits!`,4000);
+  }catch(e){ coins+=b.cost; saveShopState(); updateCoinDisplay(); console.error('Buff buy err:',e); return; }
+  renderCommBuffList(); renderCommActive();
+}
+
+async function _loadCommBuffsCore(){
+  try{
+    const now = new Date().toISOString();
+    const rows = await sbFetch(`cube_community_buffs?expires_at=gt.${now}&select=buff_type,expires_at`,{method:'GET',prefer:''});
+    const prev = {...activeCommunityBuffs};
+    activeCommunityBuffs = {};
+    if(rows) rows.forEach(r=>{ activeCommunityBuffs[r.buff_type]=new Date(r.expires_at).getTime(); });
+    
+    // Apply/expire buffs
+    COMM_BUFFS.forEach(b=>{
+      const wasActive = prev[b.id]&&prev[b.id]>Date.now();
+      const isActive = activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]>Date.now();
+      if(isActive&&!wasActive) b.apply();
+      if(!isActive&&wasActive) b.expire();
+    });
+    
+    renderCommBuffBar();
+  }catch(e){ console.error('Buff load:',e.message); }
+}
+async function loadCommunityBuffs(){
+  await _loadCommBuffsCore();
+  await loadCommunityBuffsGifts();
+}
+
+
+function renderCommBuffBar(){
+  const el = document.getElementById('commBuffBar');
+  if(!el) return;
+  const now = Date.now();
+  const active = COMM_BUFFS.filter(b=>activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]>now);
+  if(!active.length){ el.innerHTML=''; return; }
+  el.innerHTML = active.map(b=>{
+    const rem=Math.max(0,Math.ceil((activeCommunityBuffs[b.id]-now)/1000));
+    const m=Math.floor(rem/60),s=rem%60;
+    return `<div style="background:rgba(0,200,255,0.08);border:1px solid rgba(0,200,255,0.25);border-radius:20px;padding:2px 10px;font-size:0.65em;color:#00cfff;letter-spacing:1px;display:flex;align-items:center;gap:4px;">${b.icon} ${b.name} <span style="color:#1a4a4a;">${m}:${String(s).padStart(2,'0')}</span></div>`;
+  }).join('');
+}
+
+// Tick community buff timers every second
+setInterval(()=>{
+  renderCommBuffBar();
+  const now=Date.now();
+  COMM_BUFFS.forEach(b=>{
+    if(activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]<=now){ delete activeCommunityBuffs[b.id]; b.expire(); renderCommBuffBar(); }
+  });
+},1000);
+
+// ══════════════════════════════════════════════════════════════
+// TREASURE SYSTEM
+// ══════════════════════════════════════════════════════════════
+
+let knownTreasures = {}; // globalIdx -> {reward_type, reward_amount, found_by}
+const TREASURE_DENSITY = 0.05; // 5% of tiles have treasure (~500 per layer)
+const TREASURE_REWARDS = [
+  // ── COMMON ──────────────────────────────────────────────
+  {type:'coins',        icon:'💰', weight:35, amounts:[50,100,150,200],      rarity:'common'},
+  {type:'bomb',         icon:'💣', weight:18, amounts:[1],                   rarity:'common'},
+  {type:'frenzy',       icon:'⚡', weight:14, amounts:[1],                   rarity:'common'},
+  {type:'reveal',       icon:'🔦', weight:10, amounts:[1,2],                 rarity:'common'},
+  // ── UNCOMMON ────────────────────────────────────────────
+  {type:'goldRush',     icon:'✨', weight:8,  amounts:[1],                   rarity:'uncommon'},
+  {type:'nuke',         icon:'☢️', weight:5,  amounts:[1],                   rarity:'uncommon'},
+  {type:'timewarp',     icon:'⏩', weight:4,  amounts:[1],                   rarity:'uncommon'},
+  {type:'coins',        icon:'💎', weight:4,  amounts:[1000,2000,3000],      rarity:'uncommon'},  // jackpot
+  // ── RARE ────────────────────────────────────────────────
+  {type:'coinBundle',   icon:'💸', weight:2,  amounts:[5000,10000],          rarity:'rare'},   // huge coin dump
+  {type:'megaBomb',     icon:'🌋', weight:1,  amounts:[1],                   rarity:'rare'},   // 7x7 area
+  {type:'ultraFrenzy',  icon:'🌀', weight:1,  amounts:[1],                   rarity:'rare'},   // 60s frenzy
+  // ── LEGENDARY (treasure-only OPs) ───────────────────────
+  {type:'godMode',      icon:'👁️', weight:0.3,amounts:[1],                   rarity:'legendary'}, // all chips = 10x area for 30s
+  {type:'layerSkip',    icon:'🌌', weight:0.2,amounts:[1],                   rarity:'legendary'}, // skip entire layer instantly
+  {type:'coinSingularity',icon:'🪐',weight:0.1,amounts:[1],                  rarity:'legendary'}, // 50,000 coins
+  {type:'theAncient',   icon:'⚗️', weight:0.1,amounts:[1],                   rarity:'legendary'}, // permanent +3 autochipper lvls
+];
+
+const RARITY_COLORS = {common:'#aaaaaa',uncommon:'#00ff88',rare:'#4488ff',legendary:'#ff8800'};
+
+function pickTreasureReward(){
+  const total=TREASURE_REWARDS.reduce((s,r)=>s+r.weight,0);
+  let rand=Math.random()*total;
+  for(const r of TREASURE_REWARDS){ rand-=r.weight; if(rand<=0){ return{type:r.type,icon:r.icon,amount:r.amounts[Math.floor(Math.random()*r.amounts.length)]};} }
+  return{type:'coins',icon:'💰',amount:100};
+}
+
+async function seedTreasuresForLayer(layer){
+  // Seed ~50 treasures per layer (0.5% of 10000), called when layer changes
+  if(!username) return;
+  try{
+    const existing = await sbFetch(`cube_treasures?layer=eq.${layer}&select=id`,{method:'GET',prefer:''});
+    if(existing&&existing.length>0) return; // already seeded
+    const count = Math.floor(TILES_PER_LAYER*TREASURE_DENSITY*(window._commTreasureRain?2:1));
+    const rows=[];
+    const usedIdxs=new Set();
+    while(rows.length<count){
+      const li=Math.floor(Math.random()*TILES_PER_LAYER);
+      if(usedIdxs.has(li)) continue;
+      usedIdxs.add(li);
+      const gi=(layer-1)*TILES_PER_LAYER+li;
+      const r=pickTreasureReward();
+      rows.push({id:gi,layer,reward_type:r.type,reward_amount:r.amount});
+    }
+    // Insert in chunks
+    for(let c=0;c<rows.length;c+=50)
+      await sbFetch('cube_treasures',{method:'POST',headers:{'Prefer':'resolution=ignore-duplicates'},prefer:'resolution=ignore-duplicates',body:JSON.stringify(rows.slice(c,c+50))});
+  }catch(e){ console.error('Treasure seed:',e.message); }
+}
+
+async function loadTreasuresForLayer(layer){
+  try{
+    const rows=await sbFetch(`cube_treasures?layer=eq.${layer}&found_by=is.null&select=id,reward_type,reward_amount`,{method:'GET',prefer:''});
+    knownTreasures={};
+    if(rows) rows.forEach(r=>{ knownTreasures[r.id]={type:r.reward_type,amount:r.reward_amount}; });
+  }catch(e){ console.error('Treasure load:',e.message); }
+}
+
+async function checkTreasure(gi){
+  // Test mode: inject a fake treasure
+  if(window._testTreasureType&&!knownTreasures[gi]){
+    const type=window._testTreasureType;
+    window._testTreasureType=null;
+    knownTreasures[gi]={type,amount:type==='coins'?500:type==='coinBundle'?5000:1};
+  }
+  if(!knownTreasures[gi]) return;
+  const t=knownTreasures[gi];
+  delete knownTreasures[gi];
+  // Mark as found - don't abort reward if this fails
+  sbFetch(`cube_treasures?id=eq.${gi}`,{method:'PATCH',prefer:'',body:JSON.stringify({found_by:username,found_at:new Date().toISOString()})}).catch(e=>console.error('Treasure PATCH:',e.message));
+
+  let icon='💰', msg='', rarity=t.rarity||'common';
+
+  switch(t.type){
+    case 'coins':
+    case 'coinBundle':
+      icon = t.amount>=5000?'🪐':t.amount>=1000?'💎':'💰';
+      earnCoins(t.amount);
+      msg=`+${t.amount.toLocaleString()} COINS`;
+      break;
+    case 'bomb':       icon='💣'; activePowerups.bomb=(+activePowerups.bomb||0)+t.amount; msg=`BOMB ×${t.amount}`; break;
+    case 'frenzy':     icon='⚡'; activePowerups.frenzy=(+activePowerups.frenzy||0)+t.amount; msg=`CHIP FRENZY ×${t.amount}`; break;
+    case 'reveal':     icon='🔦'; activePowerups.reveal=(+activePowerups.reveal||0)+t.amount; msg=`REVEAL ×${t.amount}`; break;
+    case 'goldRush':   icon='✨'; activePowerups.goldRush=(+activePowerups.goldRush||0)+t.amount; msg=`GOLD RUSH ×${t.amount}`; break;
+    case 'nuke':       icon='☢️'; activePowerups.nuke=(+activePowerups.nuke||0)+t.amount; msg=`NUKE ×${t.amount}`; break;
+    case 'timewarp':   icon='⏩'; activePowerups.timewarp=(+activePowerups.timewarp||0)+t.amount; msg=`TIME WARP ×${t.amount}`; break;
+    case 'megaBomb':
+      icon='🌋'; rarity='rare';
+      activePowerups.megaBomb=(+activePowerups.megaBomb||0)+1;
+      msg='MEGA BOMB — 7×7 DESTRUCTION';
+      break;
+    case 'ultraFrenzy':
+      icon='🌀'; rarity='rare';
+      activePowerups.ultraFrenzy=(+activePowerups.ultraFrenzy||0)+1;
+      msg='ULTRA FRENZY — 60 SECONDS!';
+      break;
+    case 'godMode':
+      icon='👁️'; rarity='legendary';
+      activePowerups.godMode=(+activePowerups.godMode||0)+1;
+      msg='GOD MODE — 10× AREA FOR 30s';
+      break;
+    case 'layerSkip':
+      icon='🌌'; rarity='legendary';
+      activePowerups.layerSkip=(+activePowerups.layerSkip||0)+1;
+      msg='LAYER SKIP — SKIP AN ENTIRE LAYER!';
+      break;
+    case 'coinSingularity':
+      icon='🪐'; rarity='legendary';
+      earnCoins(50000);
+      msg='COIN SINGULARITY — +50,000 COINS!!';
+      break;
+    case 'theAncient':
+      icon='⚗️'; rarity='legendary';
+      passiveLevels.autoChipper=Math.min(20,(passiveLevels.autoChipper||0)+3);
+      saveShopState(); renderPassiveBadges(); startAutoChip();
+      msg='THE ANCIENT — +3 AUTO-CHIPPER LEVELS!';
+      break;
+    default:
+      icon='💰'; earnCoins(100); msg='+100 COINS';
+  }
+  saveShopState(); renderInventory();
+  showTreasurePopup(icon, msg, rarity);
+}
+
+function showTreasurePopup(icon,msg,rarity='common'){
+  const col=RARITY_COLORS[rarity]||'#aaaaaa';
+  const rarityLabel=rarity.toUpperCase();
+  const pop=document.getElementById('treasurePopup');
+  pop.style.borderColor=col;
+  pop.style.boxShadow=`0 0 60px ${col}44`;
+  document.getElementById('treasureIcon').innerText=icon;
+  document.getElementById('treasureMsg').innerText=msg;
+  document.getElementById('treasureRarity').innerText=rarityLabel;
+  document.getElementById('treasureRarity').style.color=col;
+  pop.style.display='block';
+  pop.style.opacity='1';
+  pop.style.transform='translate(-50%,-50%) scale(1)';
+  pop.style.transition='transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s';
+  clearTimeout(pop._t);
+  const dur=rarity==='legendary'?5000:rarity==='rare'?3500:2500;
+  pop._t=setTimeout(()=>{
+    pop.style.opacity='0';pop.style.transform='translate(-50%,-55%) scale(0.9)';
+    setTimeout(()=>{pop.style.display='none';},300);
+  },dur);
+  const prefix=rarity==='legendary'?'🔥 LEGENDARY TREASURE!':rarity==='rare'?'💫 RARE TREASURE!':'💎 TREASURE!';
+  showBanner(`${icon} ${prefix} ${msg}`,dur);
+  if(rarity==='legendary'||rarity==='rare') spawnConfetti();
+}
+
+// Treasure overlay drawn inline in redraw()
+
+
+// ══════════════════════════════════════════════════════════════
+// CHIP NAME FLOAT
+// ══════════════════════════════════════════════════════════════
+let _lastNameTime=0;
+function spawnChipName(rect,tx,ty,name){
+  const now=Date.now();
+  if(name===username&&now-_lastNameTime<150)return;
+  if(name===username)_lastNameTime=now;
+  const scaleX=rect.width/canvas.width,scaleY=rect.height/canvas.height;
+  const sx=rect.left+tx*scaleX,sy=rect.top+ty*scaleY;
+  const el=document.createElement('div');
+  el.className='chip-name-float';
+  el.innerText=name;
+  const jitter=(Math.random()-0.5)*40;
+  el.style.left=(sx+jitter-30)+'px';
+  el.style.top=(sy-10)+'px';
+  el.style.color=name===username?'var(--gold)':'var(--green)';
+  el.style.textShadow=name===username?'0 0 10px var(--gold)':'0 0 8px var(--green)';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1400);
+}
+
+let _prevRemovedSet=new Set();
+function showOtherChipNames(allTiles){
+  allTiles.forEach(r=>{
+    if(!_prevRemovedSet.has(r.id)&&r.removed_by&&r.removed_by!==username){
+      _prevRemovedSet.add(r.id);
+      const layer=r.layer||currentLayer;
+      if(layer!==currentLayer)return;
+      const li=r.id-(layer-1)*TILES_PER_LAYER;
+      if(li<0||li>=TILES_PER_LAYER)return;
+      const tx=(li%GRID)*TILE_SIZE+TILE_SIZE/2,ty=Math.floor(li/GRID)*TILE_SIZE+TILE_SIZE/2;
+      const rect=canvas.getBoundingClientRect();
+      spawnChipName(rect,tx,ty,r.removed_by.replace('[SKIP]',''));
+    } else if(r.removed_by){
+      _prevRemovedSet.add(r.id);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// COMMUNITY BUFFS — gift / broadcast pickup (called from loadCommunityBuffs)
+// ══════════════════════════════════════════════════════════════
+async function loadCommunityBuffsGifts(){
+  if(!username)return;
+  try{
+    const now=new Date().toISOString();
+    const gifts=await sbFetch(`cube_community_buffs?expires_at=gt.${now}&activated_by=eq.ADMIN&select=buff_type,buff_name`,{method:'GET',prefer:''});
+    if(!gifts)return;
+    gifts.forEach(g=>{
+      const key='_saw_'+g.buff_type;
+      if(window[key])return;
+      // Broadcast
+      if(g.buff_type.startsWith('broadcast_')){
+        window[key]=true;
+        showBanner(g.buff_name,8000);
+        return;
+      }
+      // Coin gift: gift_coins_PLAYERNAME_AMOUNT
+      const coinM=g.buff_type.match(/^gift_coins_(.+)_(\d+)$/);
+      if(coinM&&coinM[1]===username){
+        window[key]=true;
+        earnCoins(parseInt(coinM[2]));
+        showBanner('🎁 ADMIN GIFT: +'+parseInt(coinM[2]).toLocaleString()+' COINS!',5000);
+        return;
+      }
+      // Legendary gift: gift_legendary_PLAYERNAME_TYPE
+      const legM=g.buff_type.match(/^gift_legendary_(.+?)_(.+)$/);
+      if(legM&&legM[1]===username){
+        window[key]=true;
+        const type=legM[2];
+        activePowerups[type]=(+activePowerups[type]||0)+1;
+        saveShopState();renderInventory();
+        showBanner('👁️ ADMIN GAVE YOU: '+type.toUpperCase()+'!',6000);
+        spawnConfetti();
+      }
+    });
+  }catch(e){console.error('Gift load:',e.message);}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ══════════════════════════════════════════════════════════════
+// ONLINE PLAYERS PRESENCE
+// Uses cube_community_buffs with buff_type='presence_USERNAME'
+// Each player pings every 20s with expires_at = now+35s
+// ══════════════════════════════════════════════════════════════
+let _presenceInterval = null;
+
+async function pingPresence(){
+  if(!username) return;
+  try{
+    const expiresAt = new Date(Date.now()+35000).toISOString();
+    // Delete old presence entry then insert fresh
+    await sbFetch('cube_community_buffs?buff_type=eq.presence_'+username+'&activated_by=eq.'+username,{method:'DELETE',prefer:''});
+    await sbFetch('cube_community_buffs',{method:'POST',prefer:'',body:JSON.stringify({buff_type:'presence_'+username,buff_name:username,activated_by:username,expires_at:expiresAt})});
+  }catch(e){}
+}
+
+async function loadOnlinePlayers(){
+  try{
+    const now = new Date().toISOString();
+    const rows = await sbFetch(`cube_community_buffs?buff_type=like.presence_*&expires_at=gt.${now}&select=buff_name,expires_at`,{method:'GET',prefer:''});
+    const el = document.getElementById('onlinePlayersList');
+    if(!el||!rows) return;
+    // Deduplicate by buff_name (player name)
+    const seen = new Set();
+    const players = rows.filter(r=>{ if(seen.has(r.buff_name)) return false; seen.add(r.buff_name); return true; });
+    el.innerHTML = players.map(p=>{
+      const isMe = p.buff_name === username;
+      return `<div style="display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:5px;background:${isMe?'rgba(0,255,0,0.05)':'transparent'};">
+        <span style="width:6px;height:6px;border-radius:50%;background:${isMe?'var(--green)':'#2a5a2a'};display:inline-block;flex-shrink:0;box-shadow:${isMe?'0 0 6px var(--green)':'none'};"></span>
+        <span style="font-size:0.68em;color:${isMe?'var(--green)':'#3a6a3a'};letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.buff_name}</span>
+      </div>`;
+    }).join('');
+    // Update count label
+    const lbl = el.previousElementSibling;
+    if(lbl) lbl.innerText = `● ONLINE (${players.length})`;
+  }catch(e){}
+}
+
+function startPresence(){
+  pingPresence();
+  loadOnlinePlayers();
+  _presenceInterval = setInterval(()=>{
+    pingPresence();
+    loadOnlinePlayers();
+  }, 20000);
+}
+
+// TEST HELPER - open console and type: testTreasure('coinSingularity') 
+// then click any unbroken tile
+function testTreasure(type){
+  window._testTreasureType=type;
+  console.log('Next tile click will give: '+type);
+  showBanner('🧪 TEST MODE: next tile = '+type, 3000);
+}
+
+
+
+
+// INIT
+const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('usernameInput').value=sv;
+</script>
+
+<!-- COMMUNITY SHOP MODAL -->
+<div id="commShopModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:10006;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+  <div style="background:#050505;border:2px solid #00cfff;border-radius:15px;padding:30px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,200,255,0.2);position:relative;">
+    <span onclick="closeCommShop()" style="position:absolute;top:15px;right:20px;color:#00cfff;font-size:22px;">✖</span>
+    <h2 style="font-family:'Orbitron',monospace;color:#00cfff;text-align:center;letter-spacing:4px;margin-bottom:4px;font-size:1.1em;">🌐 COMMUNITY BUFFS</h2>
+    <div style="text-align:center;color:#333;font-size:0.72em;letter-spacing:2px;margin-bottom:18px;">BUY A BUFF — EVERYONE BENEFITS</div>
+    <div style="text-align:center;color:#555;font-size:0.8em;letter-spacing:2px;margin-bottom:16px;">YOUR COINS: <span id="commCoinDisplay" style="color:var(--gold);">0</span></div>
+    <div id="commBuffList"></div>
+    <div style="margin-top:20px;border-top:1px solid #0a0a0a;padding-top:14px;">
+      <div style="color:#2a2a2a;font-size:0.65em;letter-spacing:3px;margin-bottom:8px;">⏳ ACTIVE COMMUNITY BUFFS</div>
+      <div id="commActiveList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TREASURE POPUP -->
+<div id="treasurePopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#050505;border:2px solid var(--gold);border-radius:15px;padding:25px 35px;z-index:15000;text-align:center;box-shadow:0 0 60px var(--gold-glow);min-width:280px;">
+  <div id="treasureRarity" style="font-family:'Orbitron',monospace;font-size:0.6em;letter-spacing:5px;margin-bottom:8px;color:#aaa;">COMMON</div>
+  <div style="font-size:3.5em;margin-bottom:8px;" id="treasureIcon">💎</div>
+  <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:0.9em;letter-spacing:3px;margin-bottom:8px;">TREASURE FOUND!</div>
+  
+</body>
+</html>
