@@ -433,7 +433,7 @@ function onCanvasClick(e){
     return;
   }
   // Shovel: break NxN area around clicked tile
-  const _godBonus=window._godModeActive?4:0; const _sabPenalty=window._sabTinyArea?2:0; const sLvl=Math.max(0,(passiveLevels.shovel||0)+(window._commShovel||0)+_godBonus-_sabPenalty);
+  const _godBonus=window._godModeActive?10:0; const _sabPenalty=window._sabTinyArea?2:0; const sLvl=Math.max(0,(passiveLevels.shovel||0)+(window._commShovel||0)+_godBonus-_sabPenalty);
   if(sLvl>0){
     const radius=sLvl; // lvl1=1(2x2 area), lvl2=1(3x3)... side=lvl+1
     const side=sLvl+1;
@@ -559,10 +559,10 @@ const POWERUPS=[
   {id:'reveal',icon:'🔦',name:'Reveal Mode',basePrice:10,priceScale:1.5,desc:l=>`Hover to see who chipped tiles. ${l} charge${l!==1?'s':''}`},
   {id:'goldRush',icon:'✨',name:'Gold Rush',basePrice:60,priceScale:2.2,desc:l=>`All chips give 5x coins for 20s. ${l} charge${l!==1?'s':''}`},
   // Treasure-only powerups (not in shop)
-  {id:'megaBomb',icon:'🌋',name:'Mega Bomb',basePrice:0,priceScale:1,desc:l=>`Destroys 7×7 area. ${l} charge${l!==1?'s':''} held`},
-  {id:'ultraFrenzy',icon:'🌀',name:'Ultra Frenzy',basePrice:0,priceScale:1,desc:l=>`60s frenzy, 5× tiles per click. ${l} charge${l!==1?'s':''}`},
-  {id:'godMode',icon:'👁️',name:'God Mode',basePrice:0,priceScale:1,desc:l=>`10× shovel area for 30s. ${l} charge${l!==1?'s':''}`},
-  {id:'layerSkip',icon:'🌌',name:'Layer Skip',basePrice:0,priceScale:1,desc:l=>`Clears the entire current layer. ${l} charge${l!==1?'s':''}`},
+  {id:'megaBomb',icon:'🌋',name:'Mega Bomb',basePrice:0,priceScale:1,treasureOnly:true,desc:l=>`Destroys 7×7 area. ${l} charge${l!==1?'s':''} held`},
+  {id:'ultraFrenzy',icon:'🌀',name:'Ultra Frenzy',basePrice:0,priceScale:1,treasureOnly:true,desc:l=>`60s frenzy, 5× tiles per click. ${l} charge${l!==1?'s':''}`},
+  {id:'godMode',icon:'👁️',name:'God Mode',basePrice:0,priceScale:1,treasureOnly:true,desc:l=>`10× shovel area for 30s. ${l} charge${l!==1?'s':''}`},
+  {id:'layerSkip',icon:'🌌',name:'Layer Skip',basePrice:0,priceScale:1,treasureOnly:true,desc:l=>`Clears the entire current layer. ${l} charge${l!==1?'s':''}`},
 ];
 const SHOVEL_SIZES=[0,4,9,16,25,36]; // lvl0=no bonus, lvl1=2x2, lvl2=3x3...lvl5=6x6
 const PASSIVES=[
@@ -610,7 +610,7 @@ function openShop(){updateCoinDisplay();rShop('shopPowerups',POWERUPS,'p');rShop
 function closeShop(){document.getElementById('shopModal').style.display='none';}
 function rShop(cid,items,type){
   const el=document.getElementById(cid);
-  el.innerHTML=items.map(item=>{
+  el.innerHTML=items.filter(item=>!item.treasureOnly).map(item=>{
     const lvl=type==='s'?(passiveLevels[item.id]||0):0;
     const held=type==='p'?(typeof activePowerups[item.id]==='number'?activePowerups[item.id]:(activePowerups[item.id]?1:0)):0;
     const price=gp(item,type==='s'?lvl:held),ca=coins>=price,maxed=type==='s'&&item.maxLvl&&lvl>=item.maxLvl;
@@ -823,9 +823,9 @@ let commBuffInterval = null;
 
 function openCommShop(){
   document.getElementById('commCoinDisplay').innerText=coins.toLocaleString();
-  renderCommBuffList();
-  renderCommActive();
   document.getElementById('commShopModal').style.display='flex';
+  setCommTab('buffs', document.getElementById('tabBuffs'));
+  renderCommActive();
 }
 function closeCommShop(){ document.getElementById('commShopModal').style.display='none'; }
 
@@ -1387,7 +1387,7 @@ const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('use
   <div style="background:#050505;border:2px solid #00cfff;border-radius:15px;padding:30px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,200,255,0.2);position:relative;">
     <span onclick="closeCommShop()" style="position:absolute;top:15px;right:20px;color:#00cfff;font-size:22px;">✖</span>
     <h2 style="font-family:'Orbitron',monospace;color:#00cfff;text-align:center;letter-spacing:4px;margin-bottom:4px;font-size:1.1em;">🌐 COMMUNITY BUFFS</h2>
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;">
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;position:sticky;top:-30px;background:#050505;padding:10px 0;z-index:2;">
     <button onclick="setCommTab('buffs',this)" id="tabBuffs" style="background:#00cfff;color:#000;border:none;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">⬆ BUFFS</button>
     <button onclick="setCommTab('sabotages',this)" id="tabSabotages" style="background:#0a0a0a;color:#ff4444;border:1px solid #ff4444;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">☠ SABOTAGES</button>
   </div>
