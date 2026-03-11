@@ -297,6 +297,7 @@ function LC(idx){
 
 // STATE
 let username='',tiles={},currentLayer=1,totalChips=0,isWinner=false,hoveredTile=-1;
+window._minConfirmedLayer=1;
 let canvas,ctx,offscreen,offCtx,TILE_SIZE=8;
 let fullRedrawNeeded=true,dirtyTiles=new Set();
 let zoomLevel=1,panX=0,panY=0,isPanning=false,panStartX=0,panStartY=0,panPX=0,panPY=0;
@@ -531,13 +532,15 @@ async function loadState(){
     tiles = {};
     showOtherChipNames(all);
     for(const r of all)if(r.id>=0)tiles[r.id]={removed:true,removedBy:r.removed_by,layer:r.layer};
-    // Recalc currentLayer: scan forward from last known layer
+    // Recalc currentLayer from scratch based on server data
     const prevLayer = currentLayer;
-    // Always rescan from currentLayer in case another player advanced it
+    currentLayer = 1;
+    // Fast-path: skip layers we already know are complete
+    if(window._minConfirmedLayer>1) currentLayer=window._minConfirmedLayer;
     while(currentLayer<TOTAL_LAYERS){
       const s=(currentLayer-1)*TILES_PER_LAYER;let allC=true;
       for(let i=s;i<s+TILES_PER_LAYER;i++){if(!isRm(i)){allC=false;break;}}
-      if(allC)currentLayer++;else break;
+      if(allC){ currentLayer++; window._minConfirmedLayer=currentLayer; }else break;
     }
     invalidateLayerCache();fullRedrawNeeded=true;redraw();updateStats();
     if(currentLayer!==prevLayer){
@@ -590,7 +593,7 @@ function flashLayer(){const col=LC(currentLayer-1),f=document.getElementById('la
 
 // WINNER
 function showWinner(n){document.getElementById('winnerNameDisplay').innerText=n;document.getElementById('winnerScreen').style.display='flex';spawnConfetti();loadHof();}
-function closeWinner(){document.getElementById('winnerScreen').style.display='none';currentLayer=1;tiles={};sbFetch('cube_stats?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates',body:JSON.stringify({id:1,...{total_clicks:0,tiles_remaining:TOTAL_TILES,last_clicker:''}})}).catch(()=>{});fullRedrawNeeded=true;redraw();updateStats();}
+function closeWinner(){document.getElementById('winnerScreen').style.display='none';currentLayer=1;tiles={};window._minConfirmedLayer=1;sbFetch('cube_stats?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates',body:JSON.stringify({id:1,...{total_clicks:0,tiles_remaining:TOTAL_TILES,last_clicker:''}})}).catch(()=>{});fullRedrawNeeded=true;redraw();updateStats();}
 
 // HOF
 async function loadHof(){try{const d=await sbFetch('cube_hof?order=won_at.desc&limit=20',{method:'GET',prefer:''});const el=document.getElementById('hofEntries');if(!d||!d.length){el.innerHTML='<div style="color:#1a1a1a;text-align:center;padding:30px;font-size:0.8em;">No legends yet.</div>';return;}el.innerHTML=d.map((h,i)=>`<div class="hof-card ${i===0?'top':''}"><div class="hof-name">${i===0?'👑 ':'🏆 '}${escH(h.username)}</div><div class="hof-meta">LAYER ${h.layer_broken} — ${LC(h.layer_broken-1).name}<br>${Number(h.total_clicks_at_win||0).toLocaleString()} chips • ${new Date(h.won_at).toLocaleDateString()}</div></div>`).join('');}catch(e){}}
