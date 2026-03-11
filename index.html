@@ -433,7 +433,7 @@ function onCanvasClick(e){
     return;
   }
   // Shovel: break NxN area around clicked tile
-  const _godBonus=window._godModeActive?4:0; const sLvl=(passiveLevels.shovel||0)+(window._commShovel||0)+_godBonus;
+  const _godBonus=window._godModeActive?4:0; const _sabPenalty=window._sabTinyArea?2:0; const sLvl=Math.max(0,(passiveLevels.shovel||0)+(window._commShovel||0)+_godBonus-_sabPenalty);
   if(sLvl>0){
     const radius=sLvl; // lvl1=1(2x2 area), lvl2=1(3x3)... side=lvl+1
     const side=sLvl+1;
@@ -589,6 +589,8 @@ function earnCoins(n){
   const boost=passiveLevels.coinBoost||0;
   let mult=window._goldRushActive?5:1;
   if(window._commDoubleCoins) mult*=2;
+  if(window._sabHalfCoins) mult*=0.5;
+  if(window._sabCoinSteal&&Math.random()<0.3){coins=Math.max(0,coins-10);saveShopState();updateCoinDisplay();showBanner('🦝 COIN STEAL! -10 coins',1500);return;}
   let total=n*(1+boost)*mult;
   if(window._commCoinStorm&&Math.random()<0.2) total+=50;
   coins+=total;
@@ -657,7 +659,7 @@ function useItem(id){
   const cnt=typeof activePowerups[id]==='number'?activePowerups[id]:(activePowerups[id]?1:0);if(!cnt)return;
   if(id==='bomb'){window._bombArmed=!window._bombArmed;showBanner(window._bombArmed?'💣 BOMB ARMED — click a tile!':'💣 Disarmed',window._bombArmed?0:1500);}
   else if(id==='megaBomb'){window._megaBombArmed=!window._megaBombArmed;showBanner(window._megaBombArmed?'🌋 MEGA BOMB ARMED — click to OBLITERATE!':'🌋 Disarmed',window._megaBombArmed?0:1500);}
-  else if(id==='frenzy'){if(frenzyTimeLeft>0)return;activateFrenzy();}
+  else if(id==='frenzy'){if(frenzyTimeLeft>0)return;if(window._sabNoFrenzy){showBanner('🧊 Frenzy is FROZEN by a sabotage!',2500);return;}activateFrenzy();}
   else if(id==='ultraFrenzy'){if(window._ultraFrenzyActive)return;activateUltraFrenzy();}
   else if(id==='reveal'){if(window._revealActive)return;activateReveal();}
   else if(id==='nuke')activateNuke();
@@ -698,7 +700,7 @@ function startAutoChip(){
   if((passiveLevels.autoChipper||0)===0)return;
   const lvl=passiveLevels.autoChipper;
   const basems=Math.max(500,(5-(lvl-1)*0.5)*1000);
-  const speedMult=(window._timewarpActive?5:1)*(window._commMegaSpeed?3:1)*(1+(passiveLevels.speedChip||0));
+  const speedMult=(window._timewarpActive?5:1)*(window._commMegaSpeed?3:1)*(1+(passiveLevels.speedChip||0))/(window._sabSlow?2:1);
   const ms=Math.max(100,Math.floor(basems/speedMult));
   autoChipInterval=setInterval(()=>{
     if(isWinner)return;
@@ -886,6 +888,7 @@ async function _loadCommBuffsCore(){
       if(!isActive&&wasActive) b.expire();
     });
     
+    applySabotageEffects(rows);
     renderCommBuffBar();
   }catch(e){ console.error('Buff load:',e.message); }
 }
@@ -1231,6 +1234,145 @@ function testTreasure(type){
 
 
 
+
+// ══════════════════════════════════════════════════════════════
+// SABOTAGE SYSTEM
+// ══════════════════════════════════════════════════════════════
+const COMM_SABOTAGES = [
+  {id:'sab_slowChip',   icon:'🐌', name:'Slow Curse',       cost:500,  duration:3*60, desc:'Everyone else chips at half speed (auto-chipper 50% slower)'},
+  {id:'sab_halfCoins',  icon:'💸', name:'Coin Drain',        cost:750,  duration:4*60, desc:'Everyone else earns 50% fewer coins per chip'},
+  {id:'sab_tinyArea',   icon:'🔩', name:'Shovel Rust',       cost:1000, duration:3*60, desc:'Everyone else loses 2 shovel area levels'},
+  {id:'sab_noFrenzy',   icon:'🧊', name:'Frenzy Freeze',     cost:1200, duration:2*60, desc:"Everyone else's active frenzy is cancelled and blocked"},
+  {id:'sab_coinSteal',  icon:'🦝', name:'Coin Steal',        cost:1500, duration:2*60, desc:'Every chip by others has 30% chance to lose 10 coins'},
+  {id:'sab_blindfold',  icon:'🙈', name:'Blindfold',         cost:2000, duration:90,   desc:'Hides the grid lines and tile colours for everyone else'},
+  {id:'sab_miasma',     icon:'☣️', name:'Miasma',            cost:5000, duration:2*60, desc:'Every 5s a random already-broken tile gets restored for others'},
+];
+
+let _activeSabotages = {}; // sabId -> expiresAt ms
+
+function setCommTab(tab, btn){
+  const isBuffs = tab==='buffs';
+  document.getElementById('commBuffList').style.display = isBuffs?'':'none';
+  document.getElementById('commSabotageList').style.display = isBuffs?'none':'';
+  document.getElementById('commBuffNote').style.display = isBuffs?'':'none';
+  document.getElementById('commSabotageNote').style.display = isBuffs?'none':'';
+  document.getElementById('tabBuffs').style.background = isBuffs?'#00cfff':'#0a0a0a';
+  document.getElementById('tabBuffs').style.color = isBuffs?'#000':'#555';
+  document.getElementById('tabSabotages').style.background = isBuffs?'#0a0a0a':'#ff0040';
+  document.getElementById('tabSabotages').style.color = isBuffs?'#ff4444':'#000';
+  if(!isBuffs) renderCommSabotageList();
+}
+
+function renderCommSabotageList(){
+  const el = document.getElementById('commSabotageList');
+  const now = Date.now();
+  el.innerHTML = COMM_SABOTAGES.map(s=>{
+    const active = _activeSabotages[s.id] && _activeSabotages[s.id] > now;
+    const ca = coins >= s.cost;
+    const mins = Math.floor(s.duration/60), secs = s.duration%60;
+    const durStr = mins>0?`${mins}m${secs>0?secs+'s':''}`:`${secs}s`;
+    return `<div style="display:flex;align-items:center;gap:12px;background:${active?'rgba(255,0,64,0.06)':'rgba(255,0,64,0.02)'};border:1px solid ${active?'rgba(255,0,64,0.35)':'#1a0008'};border-radius:10px;padding:14px;margin-bottom:8px;">
+      <span style="font-size:2em;">${s.icon}</span>
+      <div style="flex:1;">
+        <div style="color:${active?'#ff4444':'#cc2222'};font-weight:bold;font-size:0.9em;margin-bottom:3px;">${s.name} <span style="color:#2a0008;font-size:0.7em;">${durStr}</span>${active?'<span style="color:#ff0040;font-size:0.7em;margin-left:8px;">● ACTIVE</span>':''}</div>
+        <div style="color:#2a1a1a;font-size:0.75em;">${s.desc}</div>
+      </div>
+      <button onclick="buyCommSabotage('${s.id}')" style="background:${ca?'#ff0040':'#1a0008'};color:${ca?'#fff':'#3a0015'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${!ca?'disabled':''}>🪙 ${s.cost.toLocaleString()}</button>
+    </div>`;
+  }).join('');
+}
+
+async function buyCommSabotage(sabId){
+  const s = COMM_SABOTAGES.find(x=>x.id===sabId);
+  if(!s||coins<s.cost) return;
+  coins -= s.cost;
+  saveShopState(); updateCoinDisplay();
+  const expiresAt = new Date(Date.now()+s.duration*1000).toISOString();
+  try{
+    await sbFetch('cube_community_buffs',{method:'POST',prefer:'',body:JSON.stringify({buff_type:sabId,buff_name:s.name,activated_by:username,expires_at:expiresAt})});
+    showBanner(`${s.icon} ${s.name} sabotage activated — others suffer!`,4000);
+  }catch(e){ coins+=s.cost; saveShopState(); updateCoinDisplay(); return; }
+  renderCommSabotageList();
+}
+
+// Apply/expire sabotages — called from _loadCommBuffsCore
+function applySabotageEffects(rows){
+  const now = Date.now();
+  const prev = {..._activeSabotages};
+  _activeSabotages = {};
+
+  if(rows) rows.forEach(r=>{
+    const s = COMM_SABOTAGES.find(x=>x.id===r.buff_type);
+    if(!s) return;
+    // Don't apply sabotages activated by self
+    if(r.activated_by === username) return;
+    _activeSabotages[r.buff_type] = new Date(r.expires_at).getTime();
+  });
+
+  // Apply effects
+  const slowActive    = Object.keys(_activeSabotages).includes('sab_slowChip');
+  const blindActive   = Object.keys(_activeSabotages).includes('sab_blindfold');
+
+  window._sabSlow     = slowActive;
+  window._sabHalfCoins= _activeSabotages['sab_halfCoins'] > now;
+  window._sabTinyArea = _activeSabotages['sab_tinyArea'] > now;
+  window._sabNoFrenzy = _activeSabotages['sab_noFrenzy'] > now;
+  window._sabCoinSteal= _activeSabotages['sab_coinSteal'] > now;
+  window._sabBlind    = blindActive;
+  window._sabMiasma   = _activeSabotages['sab_miasma'] > now;
+
+  // Restart auto-chipper with new speed
+  if(passiveLevels.autoChipper>0) startAutoChip();
+
+  // Blindfold: toggle grid visibility
+  const canvas = document.getElementById('cubeCanvas');
+  if(canvas) canvas.style.filter = blindActive ? 'saturate(0) brightness(0.4)' : '';
+
+  // Frenzy freeze
+  if(window._sabNoFrenzy && frenzyTimeLeft>0){
+    frenzyTimeLeft=0;
+    if(frenzyInterval){clearInterval(frenzyInterval);frenzyInterval=null;}
+    showBanner('🧊 FRENZY FROZEN by a sabotage!',3000);
+  }
+
+  // Show sabotage bar
+  renderSabotageBar();
+}
+
+// Miasma: randomly restore a tile every 5s if active
+setInterval(()=>{
+  if(!window._sabMiasma||isWinner||!username)return;
+  const s=(currentLayer-1)*TILES_PER_LAYER;
+  const removed=[];
+  for(let i=s;i<s+TILES_PER_LAYER;i++)if(isRm(i))removed.push(i);
+  if(!removed.length)return;
+  const gi=removed[Math.floor(Math.random()*removed.length)];
+  delete tiles[gi];
+  invalidateLayerCache();
+  dirtyTiles.add(gi-s);
+  redraw();
+},5000);
+
+function renderSabotageBar(){
+  // Re-use commBuffBar but add sabotage indicators in red
+  const el = document.getElementById('commBuffBar');
+  if(!el) return;
+  const now = Date.now();
+  const activeBuffs = COMM_BUFFS.filter(b=>activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]>now);
+  const activeSabs = COMM_SABOTAGES.filter(s=>_activeSabotages[s.id]&&_activeSabotages[s.id]>now);
+  const buffHtml = activeBuffs.map(b=>{
+    const rem=Math.max(0,Math.ceil((activeCommunityBuffs[b.id]-now)/1000));
+    const m=Math.floor(rem/60),sc=rem%60;
+    return `<div style="background:rgba(0,200,255,0.08);border:1px solid rgba(0,200,255,0.25);border-radius:20px;padding:2px 10px;font-size:0.65em;color:#00cfff;letter-spacing:1px;">${b.icon} ${b.name} ${m}:${String(sc).padStart(2,'0')}</div>`;
+  }).join('');
+  const sabHtml = activeSabs.map(s=>{
+    const rem=Math.max(0,Math.ceil((_activeSabotages[s.id]-now)/1000));
+    const m=Math.floor(rem/60),sc=rem%60;
+    return `<div style="background:rgba(255,0,64,0.08);border:1px solid rgba(255,0,64,0.3);border-radius:20px;padding:2px 10px;font-size:0.65em;color:#ff4444;letter-spacing:1px;">${s.icon} ${s.name} ${m}:${String(sc).padStart(2,'0')}</div>`;
+  }).join('');
+  el.innerHTML = buffHtml + sabHtml;
+}
+
 // INIT
 const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('usernameInput').value=sv;
 </script>
@@ -1240,9 +1382,15 @@ const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('use
   <div style="background:#050505;border:2px solid #00cfff;border-radius:15px;padding:30px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,200,255,0.2);position:relative;">
     <span onclick="closeCommShop()" style="position:absolute;top:15px;right:20px;color:#00cfff;font-size:22px;">✖</span>
     <h2 style="font-family:'Orbitron',monospace;color:#00cfff;text-align:center;letter-spacing:4px;margin-bottom:4px;font-size:1.1em;">🌐 COMMUNITY BUFFS</h2>
-    <div style="text-align:center;color:#333;font-size:0.72em;letter-spacing:2px;margin-bottom:18px;">BUY A BUFF — EVERYONE BENEFITS</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;">
+    <button onclick="setCommTab('buffs',this)" id="tabBuffs" style="background:#00cfff;color:#000;border:none;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">⬆ BUFFS</button>
+    <button onclick="setCommTab('sabotages',this)" id="tabSabotages" style="background:#0a0a0a;color:#ff4444;border:1px solid #ff444444;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">☠ SABOTAGES</button>
+  </div>
+  <div id="commSabotageNote" style="display:none;text-align:center;color:#ff2222;font-size:0.7em;letter-spacing:2px;margin-bottom:14px;background:rgba(255,0,0,0.06);border:1px solid rgba(255,0,0,0.15);border-radius:8px;padding:8px;">⚠ AFFECTS ALL OTHER PLAYERS — YOU ARE IMMUNE</div>
+  <div style="text-align:center;color:#333;font-size:0.72em;letter-spacing:2px;margin-bottom:14px;" id="commBuffNote">BUY A BUFF — EVERYONE BENEFITS</div>
     <div style="text-align:center;color:#555;font-size:0.8em;letter-spacing:2px;margin-bottom:16px;">YOUR COINS: <span id="commCoinDisplay" style="color:var(--gold);">0</span></div>
     <div id="commBuffList"></div>
+    <div id="commSabotageList" style="display:none;"></div>
     <div style="margin-top:20px;border-top:1px solid #0a0a0a;padding-top:14px;">
       <div style="color:#2a2a2a;font-size:0.65em;letter-spacing:3px;margin-bottom:8px;">⏳ ACTIVE COMMUNITY BUFFS</div>
       <div id="commActiveList" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -1251,10 +1399,12 @@ const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('use
 </div>
 
 <!-- TREASURE POPUP -->
-<div id="treasurePopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#050505;border:2px solid var(--gold);border-radius:15px;padding:25px 35px;z-index:15000;text-align:center;box-shadow:0 0 60px var(--gold-glow);min-width:280px;">
+<div id="treasurePopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#050505;border:2px solid var(--gold);border-radius:15px;padding:25px 35px;z-index:99999;text-align:center;box-shadow:0 0 60px var(--gold-glow);min-width:280px;">
   <div id="treasureRarity" style="font-family:'Orbitron',monospace;font-size:0.6em;letter-spacing:5px;margin-bottom:8px;color:#aaa;">COMMON</div>
   <div style="font-size:3.5em;margin-bottom:8px;" id="treasureIcon">💎</div>
   <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:0.9em;letter-spacing:3px;margin-bottom:8px;">TREASURE FOUND!</div>
-  
+  <div id="treasureMsg" style="color:#888;font-size:0.85em;letter-spacing:2px;margin-top:4px;"></div>
+</div>
+
 </body>
 </html>
