@@ -96,6 +96,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;
 
 
 
+
+/* ── BUY ANIMATION ── */
+@keyframes buffBurst {
+  0%   { transform:scale(0.6); opacity:1; }
+  60%  { transform:scale(1.15); opacity:0.9; }
+  100% { transform:scale(2.2); opacity:0; }
+}
+@keyframes sabBurst {
+  0%   { transform:scale(0.6); opacity:1; }
+  60%  { transform:scale(1.15); opacity:0.9; }
+  100% { transform:scale(2.4); opacity:0; }
+}
+@keyframes buffPillIn {
+  0%   { transform:translateY(-10px) scale(0.85); opacity:0; }
+  100% { transform:translateY(0) scale(1);        opacity:1; }
+}
+.buff-pill-new { animation: buffPillIn 0.35s cubic-bezier(0.175,0.885,0.32,1.275) forwards; }
+
+#buyFlash {
+  pointer-events:none;
+  position:fixed;
+  border-radius:50%;
+  z-index:99998;
+  transform:scale(0);
+  opacity:0;
+}
+#buyFlash.burst-buff { animation: buffBurst 0.55s ease-out forwards; }
+#buyFlash.burst-sab  { animation: sabBurst  0.55s ease-out forwards; }
 </style>
 </head>
 <body>
@@ -148,6 +176,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;
 <!-- PASSIVE BADGES -->
 <!-- COMMUNITY BUFFS BAR -->
 <div id="commBuffBar" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
+<div id="sabotageBar" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
+<div id="buyFlash"></div>
 
 <div id="passiveBadges" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
 
@@ -866,7 +896,7 @@ function renderCommBuffList(){
         <div style="color:${active?'#00cfff':'white'};font-weight:bold;font-size:0.9em;margin-bottom:3px;">${b.name} <span style="color:#2a2a2a;font-size:0.7em;">${durStr}</span>${active?'<span style="color:#00cfff;font-size:0.7em;margin-left:8px;">● ACTIVE</span>':''}</div>
         <div style="color:#2a2a2a;font-size:0.75em;">${b.desc}</div>
       </div>
-      <button onclick="buyCommBuff('${b.id}')" style="background:${ca?'#00cfff':'#0a1a1a'};color:${ca?'#000':'#1a3a3a'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${!ca?'disabled':''}>🪙 ${b.cost.toLocaleString()}</button>
+      <button onclick="buyCommBuff('${b.id}',this)" style="background:${ca?'#00cfff':'#0a1a1a'};color:${ca?'#000':'#1a3a3a'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${!ca?'disabled':''}>🪙 ${b.cost.toLocaleString()}</button>
     </div>`;
   }).join('');
 }
@@ -887,9 +917,10 @@ function renderCommActive(){
   }).join('');
 }
 
-async function buyCommBuff(buffId){
+async function buyCommBuff(buffId, btnEl){
   const b = COMM_BUFFS.find(x=>x.id===buffId);
   if(!b||coins<b.cost) return;
+  triggerBuyAnimation(btnEl, 'buff');
   coins -= b.cost;
   saveShopState(); updateCoinDisplay();
   const expiresAt = new Date(Date.now()+b.duration*1000).toISOString();
@@ -918,6 +949,7 @@ async function _loadCommBuffsCore(){
     
     applySabotageEffects(rows);
     renderCommBuffBar();
+    renderSabotageBar();
   }catch(e){ console.error('Buff load:',e.message); }
 }
 async function loadCommunityBuffs(){
@@ -925,6 +957,40 @@ async function loadCommunityBuffs(){
   await loadCommunityBuffsGifts();
 }
 
+
+
+// ── BUY ANIMATION ──
+function triggerBuyAnimation(btnEl, type) {
+  const flash = document.getElementById('buyFlash');
+  if (!flash || !btnEl) return;
+  const rect = btnEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top  + rect.height / 2;
+  const size = type === 'sab' ? 180 : 160;
+  flash.style.cssText = `
+    position:fixed; border-radius:50%; z-index:99998; pointer-events:none;
+    width:${size}px; height:${size}px;
+    left:${cx - size/2}px; top:${cy - size/2}px;
+    background:${type==='sab'
+      ? 'radial-gradient(circle, rgba(255,0,64,0.7) 0%, rgba(255,0,64,0) 70%)'
+      : 'radial-gradient(circle, rgba(0,200,255,0.7) 0%, rgba(0,200,255,0) 70%)'};
+  `;
+  flash.className = '';
+  void flash.offsetWidth; // force reflow
+  flash.className = type === 'sab' ? 'burst-sab' : 'burst-buff';
+  // Also flash the modal background briefly
+  const modal = document.getElementById(type==='sab' ? 'sabotageModal' : 'commShopModal');
+  if (modal) {
+    const inner = modal.querySelector('div');
+    if (inner) {
+      const origBox = inner.style.boxShadow;
+      inner.style.transition = 'box-shadow 0.1s';
+      inner.style.boxShadow = type==='sab'
+        ? '0 0 60px rgba(255,0,64,0.6)' : '0 0 60px rgba(0,200,255,0.6)';
+      setTimeout(() => { inner.style.boxShadow = origBox; inner.style.transition=''; }, 400);
+    }
+  }
+}
 
 function renderCommBuffBar(){
   const el = document.getElementById('commBuffBar');
@@ -1293,14 +1359,15 @@ function renderCommSabotageList(){
         <div style="color:${active?'#ff4444':'#cc2222'};font-weight:bold;font-size:0.9em;margin-bottom:3px;">${s.name} <span style="color:#2a0008;font-size:0.7em;">${durStr}</span>${active?'<span style="color:#ff0040;font-size:0.7em;margin-left:8px;">● ACTIVE</span>':''}</div>
         <div style="color:#2a1a1a;font-size:0.75em;">${s.desc}</div>
       </div>
-      <button onclick="buyCommSabotage('${s.id}')" style="background:${ca?'#ff0040':'#1a0008'};color:${ca?'#fff':'#3a0015'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${!ca?'disabled':''}>🪙 ${s.cost.toLocaleString()}</button>
+      <button onclick="buyCommSabotage('${s.id}',this)" style="background:${ca?'#ff0040':'#1a0008'};color:${ca?'#fff':'#3a0015'};border:none;padding:8px 14px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:0.8em;white-space:nowrap;" ${!ca?'disabled':''}>🪙 ${s.cost.toLocaleString()}</button>
     </div>`;
   }).join('');
 }
 
-async function buyCommSabotage(sabId){
+async function buyCommSabotage(sabId, btnEl){
   const s = COMM_SABOTAGES.find(x=>x.id===sabId);
   if(!s||coins<s.cost) return;
+  triggerBuyAnimation(btnEl, 'sab');
   coins -= s.cost;
   saveShopState(); updateCoinDisplay();
   const expiresAt = new Date(Date.now()+s.duration*1000).toISOString();
@@ -1309,6 +1376,7 @@ async function buyCommSabotage(sabId){
     showBanner(`${s.icon} ${s.name} sabotage activated — others suffer!`,4000);
   }catch(e){ coins+=s.cost; saveShopState(); updateCoinDisplay(); return; }
   renderCommSabotageList();
+  renderSabotageBar();
 }
 
 // Apply/expire sabotages — called from _loadCommBuffsCore
@@ -1367,23 +1435,15 @@ setInterval(()=>{
 },5000);
 
 function renderSabotageBar(){
-  // Re-use commBuffBar but add sabotage indicators in red
-  const el = document.getElementById('commBuffBar');
-  if(!el) return;
+  const sabEl = document.getElementById('sabotageBar');
+  if(!sabEl) return;
   const now = Date.now();
-  const activeBuffs = COMM_BUFFS.filter(b=>activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]>now);
   const activeSabs = COMM_SABOTAGES.filter(s=>_activeSabotages[s.id]&&_activeSabotages[s.id]>now);
-  const buffHtml = activeBuffs.map(b=>{
-    const rem=Math.max(0,Math.ceil((activeCommunityBuffs[b.id]-now)/1000));
-    const m=Math.floor(rem/60),sc=rem%60;
-    return `<div style="background:rgba(0,200,255,0.08);border:1px solid rgba(0,200,255,0.25);border-radius:20px;padding:2px 10px;font-size:0.65em;color:#00cfff;letter-spacing:1px;">${b.icon} ${b.name} ${m}:${String(sc).padStart(2,'0')}</div>`;
-  }).join('');
-  const sabHtml = activeSabs.map(s=>{
+  sabEl.innerHTML = activeSabs.map(s=>{
     const rem=Math.max(0,Math.ceil((_activeSabotages[s.id]-now)/1000));
     const m=Math.floor(rem/60),sc=rem%60;
-    return `<div style="background:rgba(255,0,64,0.08);border:1px solid rgba(255,0,64,0.3);border-radius:20px;padding:2px 10px;font-size:0.65em;color:#ff4444;letter-spacing:1px;">${s.icon} ${s.name} ${m}:${String(sc).padStart(2,'0')}</div>`;
+    return `<div style="background:rgba(255,0,64,0.08);border:1px solid rgba(255,0,64,0.35);border-radius:20px;padding:2px 10px;font-size:0.65em;color:#ff4466;letter-spacing:1px;display:flex;align-items:center;gap:4px;">${s.icon} ${s.name} <span style="color:#661122;">${m}:${String(sc).padStart(2,'0')}</span></div>`;
   }).join('');
-  el.innerHTML = buffHtml + sabHtml;
 }
 
 // INIT
