@@ -477,7 +477,7 @@ async function performChip(gi,mag=true){
   try{
     await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify({id:gi,layer:currentLayer,removed_by:username,removed_at:new Date().toISOString()})});
     const lr=cntLayer(currentLayer),tr=TOTAL_TILES-((currentLayer-1)*TILES_PER_LAYER+lr);
-    await sbFetch('cube_stats?id=eq.1',{method:'PATCH',prefer:'',body:JSON.stringify({total_clicks:totalChips,tiles_remaining:tr,last_clicker:username})});
+    await sbFetch('cube_stats?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates',body:JSON.stringify({id:1,total_clicks:totalChips,tiles_remaining:tr,last_clicker:username})});
   }catch(err){
     console.error('Sync:',err.message);
     setTimeout(async()=>{try{await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify({id:gi,layer:currentLayer,removed_by:username,removed_at:new Date().toISOString()})});}catch(e){}},1500);
@@ -544,7 +544,7 @@ function flashLayer(){const col=LC(currentLayer-1),f=document.getElementById('la
 
 // WINNER
 function showWinner(n){document.getElementById('winnerNameDisplay').innerText=n;document.getElementById('winnerScreen').style.display='flex';spawnConfetti();loadHof();}
-function closeWinner(){document.getElementById('winnerScreen').style.display='none';currentLayer=1;tiles={};sbFetch('cube_stats?id=eq.1',{method:'PATCH',prefer:'',body:JSON.stringify({total_clicks:0,tiles_remaining:TOTAL_TILES,last_clicker:''})}).catch(()=>{});fullRedrawNeeded=true;redraw();updateStats();}
+function closeWinner(){document.getElementById('winnerScreen').style.display='none';currentLayer=1;tiles={};sbFetch('cube_stats?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates',body:JSON.stringify({id:1,...{total_clicks:0,tiles_remaining:TOTAL_TILES,last_clicker:''}})}).catch(()=>{});fullRedrawNeeded=true;redraw();updateStats();}
 
 // HOF
 async function loadHof(){try{const d=await sbFetch('cube_hof?order=won_at.desc&limit=20',{method:'GET',prefer:''});const el=document.getElementById('hofEntries');if(!d||!d.length){el.innerHTML='<div style="color:#1a1a1a;text-align:center;padding:30px;font-size:0.8em;">No legends yet.</div>';return;}el.innerHTML=d.map((h,i)=>`<div class="hof-card ${i===0?'top':''}"><div class="hof-name">${i===0?'👑 ':'🏆 '}${escH(h.username)}</div><div class="hof-meta">LAYER ${h.layer_broken} — ${LC(h.layer_broken-1).name}<br>${Number(h.total_clicks_at_win||0).toLocaleString()} chips • ${new Date(h.won_at).toLocaleDateString()}</div></div>`).join('');}catch(e){}}
@@ -558,6 +558,11 @@ const POWERUPS=[
   {id:'timewarp',icon:'⏩',name:'Time Warp',basePrice:80,priceScale:2.5,desc:l=>`Auto-chipper runs 5x faster for 30s. ${l} charge${l!==1?'s':''}`},
   {id:'reveal',icon:'🔦',name:'Reveal Mode',basePrice:10,priceScale:1.5,desc:l=>`Hover to see who chipped tiles. ${l} charge${l!==1?'s':''}`},
   {id:'goldRush',icon:'✨',name:'Gold Rush',basePrice:60,priceScale:2.2,desc:l=>`All chips give 5x coins for 20s. ${l} charge${l!==1?'s':''}`},
+  // Treasure-only powerups (not in shop)
+  {id:'megaBomb',icon:'🌋',name:'Mega Bomb',basePrice:0,priceScale:1,desc:l=>`Destroys 7×7 area. ${l} charge${l!==1?'s':''} held`},
+  {id:'ultraFrenzy',icon:'🌀',name:'Ultra Frenzy',basePrice:0,priceScale:1,desc:l=>`60s frenzy, 5× tiles per click. ${l} charge${l!==1?'s':''}`},
+  {id:'godMode',icon:'👁️',name:'God Mode',basePrice:0,priceScale:1,desc:l=>`10× shovel area for 30s. ${l} charge${l!==1?'s':''}`},
+  {id:'layerSkip',icon:'🌌',name:'Layer Skip',basePrice:0,priceScale:1,desc:l=>`Clears the entire current layer. ${l} charge${l!==1?'s':''}`},
 ];
 const SHOVEL_SIZES=[0,4,9,16,25,36]; // lvl0=no bonus, lvl1=2x2, lvl2=3x3...lvl5=6x6
 const PASSIVES=[
@@ -649,7 +654,7 @@ function renderInventory(){
   const bar=document.getElementById('invSlots');if(!bar)return;
   const held=[];POWERUPS.forEach(p=>{const cnt=typeof activePowerups[p.id]==='number'?activePowerups[p.id]:(activePowerups[p.id]?1:0);if(cnt>0)held.push({...p,cnt});});
   let h='';
-  for(let i=0;i<8;i++){
+  for(let i=0;i<held.length;i++){
     if(held[i]){const p=held[i],ia=(p.id==='bomb'&&window._bombArmed)||(p.id==='frenzy'&&frenzyTimeLeft>0)||(p.id==='reveal'&&window._revealActive);h+=`<div class="inv-slot has-item ${ia?'active-powerup':''}" onclick="useItem('${p.id}')" title="${p.name} (×${p.cnt})">${p.icon}<span class="slot-count">${p.cnt}</span></div>`;}
     else h+=`<div class="inv-slot"><span style="color:#111;font-size:0.7em;">·</span></div>`;
   }
@@ -678,7 +683,7 @@ async function activateBomb(li){
   for(let i=0;i<toRm.length;i++){setRm(toRm[i],username);totalChips++;earnCoins(1);dirtyTiles.add(toRm[i]-(currentLayer-1)*TILES_PER_LAYER);if(i%5===0)redraw();}
   redraw();invalidateLayerCache();activePowerups.bomb=Math.max(0,cnt-1)||false;saveShopState();renderInventory();
   showBanner(`💣 BOMB — ${toRm.length} tiles! (${Math.max(0,cnt-1)} left)`,2500);
-  try{const now=new Date().toISOString(),rows=toRm.map(gi=>({id:gi,layer:currentLayer,removed_by:username,removed_at:now}));for(let c=0;c<rows.length;c+=50)await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify(rows.slice(c,c+50))});const lr=cntLayer(currentLayer);await sbFetch('cube_stats?id=eq.1',{method:'PATCH',prefer:'',body:JSON.stringify({total_clicks:totalChips,tiles_remaining:TOTAL_TILES-((currentLayer-1)*TILES_PER_LAYER+lr),last_clicker:username})});}catch(e){console.error('Bomb sync:',e.message);}
+  try{const now=new Date().toISOString(),rows=toRm.map(gi=>({id:gi,layer:currentLayer,removed_by:username,removed_at:now}));for(let c=0;c<rows.length;c+=50)await sbFetch('cube_tiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},prefer:'resolution=merge-duplicates',body:JSON.stringify(rows.slice(c,c+50))});const lr=cntLayer(currentLayer);await sbFetch('cube_stats?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates',body:JSON.stringify({id:1,...{total_clicks:totalChips,tiles_remaining:TOTAL_TILES-((currentLayer-1)*TILES_PER_LAYER+lr),last_clicker:username}})});}catch(e){console.error('Bomb sync:',e.message);}
   updateStats();checkLayerComplete();
 }
 function activateFrenzy(){
@@ -999,7 +1004,7 @@ async function checkTreasure(gi){
   const t=knownTreasures[gi];
   delete knownTreasures[gi];
   // Mark as found - don't abort reward if this fails
-  sbFetch(`cube_treasures?id=eq.${gi}`,{method:'PATCH',prefer:'',body:JSON.stringify({found_by:username,found_at:new Date().toISOString()})}).catch(e=>console.error('Treasure PATCH:',e.message));
+  sbFetch(`cube_treasures?id=eq.${gi}`,{method:'POST',prefer:'resolution=merge-duplicates',body:JSON.stringify({id:gi,found_by:username,found_at:new Date().toISOString()})}).catch(e=>console.error('Treasure PATCH:',e.message));
 
   let icon='💰', msg='', rarity=t.rarity||'common';
 
@@ -1384,7 +1389,7 @@ const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('use
     <h2 style="font-family:'Orbitron',monospace;color:#00cfff;text-align:center;letter-spacing:4px;margin-bottom:4px;font-size:1.1em;">🌐 COMMUNITY BUFFS</h2>
     <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;">
     <button onclick="setCommTab('buffs',this)" id="tabBuffs" style="background:#00cfff;color:#000;border:none;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">⬆ BUFFS</button>
-    <button onclick="setCommTab('sabotages',this)" id="tabSabotages" style="background:#0a0a0a;color:#ff4444;border:1px solid #ff444444;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">☠ SABOTAGES</button>
+    <button onclick="setCommTab('sabotages',this)" id="tabSabotages" style="background:#0a0a0a;color:#ff4444;border:1px solid #ff4444;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">☠ SABOTAGES</button>
   </div>
   <div id="commSabotageNote" style="display:none;text-align:center;color:#ff2222;font-size:0.7em;letter-spacing:2px;margin-bottom:14px;background:rgba(255,0,0,0.06);border:1px solid rgba(255,0,0,0.15);border-radius:8px;padding:8px;">⚠ AFFECTS ALL OTHER PLAYERS — YOU ARE IMMUNE</div>
   <div style="text-align:center;color:#333;font-size:0.72em;letter-spacing:2px;margin-bottom:14px;" id="commBuffNote">BUY A BUFF — EVERYONE BENEFITS</div>
