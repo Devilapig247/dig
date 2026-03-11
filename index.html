@@ -1005,12 +1005,16 @@ function renderCommBuffBar(){
   }).join('');
 }
 
-// Tick community buff timers every second
+// Tick community buff + sabotage timers every second
 setInterval(()=>{
   renderCommBuffBar();
+  renderSabotageBar();
   const now=Date.now();
   COMM_BUFFS.forEach(b=>{
     if(activeCommunityBuffs[b.id]&&activeCommunityBuffs[b.id]<=now){ delete activeCommunityBuffs[b.id]; b.expire(); renderCommBuffBar(); }
+  });
+  Object.keys(_activeSabotages).forEach(id=>{
+    if(_activeSabotages[id]<=now){ delete _activeSabotages[id]; renderSabotageBar(); }
   });
 },1000);
 
