@@ -507,10 +507,11 @@ async function loadState(){
       if(allC)currentLayer++;else break;
     }
     invalidateLayerCache();fullRedrawNeeded=true;redraw();updateStats();
+    seedTreasuresForLayer(currentLayer).then(()=>loadTreasuresForLayer(currentLayer));
   }catch(e){console.error('Load:',e.message);}
 }
 
-async function loadAll(){
+async async function loadAll(){
   await loadState();
   await loadCommunityBuffs();
   loadOnlinePlayers();
@@ -535,13 +536,13 @@ function updateStats(){
 }
 
 // LAYER COMPLETE
-async function checkLayerComplete(){
+async async function checkLayerComplete(){
   const s=(currentLayer-1)*TILES_PER_LAYER;let allG=true;
   for(let i=s;i<s+TILES_PER_LAYER;i++){if(!isRm(i)){allG=false;break;}}
   if(!allG)return;
   try{await sbFetch('cube_hof',{method:'POST',body:JSON.stringify({username,layer_broken:currentLayer,total_clicks_at_win:totalChips})});}catch(e){}
   if(currentLayer===TOTAL_LAYERS){isWinner=true;setTimeout(()=>showWinner(username),800);}
-  else{flashLayer();await new Promise(r=>setTimeout(r,600));currentLayer++;tiles={};fullRedrawNeeded=true;redraw();updateStats();loadHof();}
+  else{flashLayer();await new Promise(r=>setTimeout(r,600));currentLayer++;tiles={};invalidateLayerCache();fullRedrawNeeded=true;redraw();updateStats();loadHof();seedTreasuresForLayer(currentLayer).then(()=>loadTreasuresForLayer(currentLayer));}
 }
 function flashLayer(){const col=LC(currentLayer-1),f=document.getElementById('layerFlash');f.style.background=col.hi;f.classList.add('flash');setTimeout(()=>{f.style.transition='opacity 0.6s';f.style.opacity='0';},100);setTimeout(()=>{f.style.opacity='';f.style.transition='';f.classList.remove('flash');},700);}
 
@@ -881,7 +882,7 @@ async function buyCommBuff(buffId){
   saveShopState(); updateCoinDisplay();
   const expiresAt = new Date(Date.now()+b.duration*1000).toISOString();
   try{
-    await sbFetch('cube_community_buffs',{method:'POST',body:JSON.stringify({buff_type:buffId,buff_name:b.name,activated_by:username,expires_at:expiresAt})});
+    await sbFetch('cube_community_buffs',{method:'POST',prefer:'',body:JSON.stringify({buff_type:buffId,buff_name:b.name,activated_by:username,expires_at:expiresAt})});
     showBanner(`${b.icon} ${b.name} activated — everyone benefits!`,4000);
   }catch(e){ coins+=b.cost; saveShopState(); updateCoinDisplay(); console.error('Buff buy err:',e); return; }
   renderCommBuffList(); renderCommActive();
@@ -890,10 +891,10 @@ async function buyCommBuff(buffId){
 async function _loadCommBuffsCore(){
   try{
     const now = new Date().toISOString();
-    const rows = await sbFetch(`cube_community_buffs?expires_at=gt.${now}&select=buff_type,expires_at`,{method:'GET',prefer:''});
+    const rows = await sbFetch(`cube_community_buffs?expires_at=gt.${now}&select=buff_type,expires_at,activated_by`,{method:'GET',prefer:''});
     const prev = {...activeCommunityBuffs};
     activeCommunityBuffs = {};
-    if(rows) rows.forEach(r=>{ activeCommunityBuffs[r.buff_type]=new Date(r.expires_at).getTime(); });
+    if(rows) rows.forEach(r=>{ if(!r.buff_type.startsWith('sab_')&&!r.buff_type.startsWith('presence_')) activeCommunityBuffs[r.buff_type]=new Date(r.expires_at).getTime(); });
     
     // Apply/expire buffs
     COMM_BUFFS.forEach(b=>{
