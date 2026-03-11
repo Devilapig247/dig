@@ -494,27 +494,39 @@ async function loadState(){
     if(stats&&stats.length)totalChips=parseInt(stats[0].total_clicks)||0;
     let all=[],off=0;
     while(true){
-      const pg=await sbFetch(`cube_tiles?removed_by=not.is.null&select=id,layer,removed_by&limit=1000&offset=${off}`,{method:'GET',prefer:''});
+      const pg=await sbFetch(`cube_tiles?select=id,layer,removed_by&limit=1000&offset=${off}&order=id`,{method:'GET',prefer:''});
       if(!pg||!pg.length)break;all=all.concat(pg);if(pg.length<1000)break;off+=1000;
     }
+    // Clear and rebuild tiles from server (authoritative sync)
+    tiles = {};
     showOtherChipNames(all);
     for(const r of all)if(r.id>=0)tiles[r.id]={removed:true,removedBy:r.removed_by,layer:r.layer};
-    // Recalc layer: check if current layer is fully cleared
-    // (only scan forward, don't re-scan all 10000 layers)
+    // Recalc currentLayer: scan forward from last known layer
+    const prevLayer = currentLayer;
+    // Always rescan from currentLayer in case another player advanced it
     while(currentLayer<TOTAL_LAYERS){
       const s=(currentLayer-1)*TILES_PER_LAYER;let allC=true;
       for(let i=s;i<s+TILES_PER_LAYER;i++){if(!isRm(i)){allC=false;break;}}
       if(allC)currentLayer++;else break;
     }
     invalidateLayerCache();fullRedrawNeeded=true;redraw();updateStats();
-    seedTreasuresForLayer(currentLayer).then(()=>loadTreasuresForLayer(currentLayer));
+    if(currentLayer!==prevLayer){
+      seedTreasuresForLayer(currentLayer).then(()=>loadTreasuresForLayer(currentLayer));
+    }
   }catch(e){console.error('Load:',e.message);}
 }
 
+let _loadAllRunning = false;
 async function loadAll(){
-  await loadState();
-  await loadCommunityBuffs();
-  loadOnlinePlayers();
+  if(_loadAllRunning) return;
+  _loadAllRunning = true;
+  try{
+    await loadState();
+    await loadCommunityBuffs();
+    loadOnlinePlayers();
+  }finally{
+    _loadAllRunning = false;
+  }
 }
 
 // STATS
@@ -891,7 +903,7 @@ async function buyCommBuff(buffId){
 async function _loadCommBuffsCore(){
   try{
     const now = new Date().toISOString();
-    const rows = await sbFetch(`cube_community_buffs?expires_at=gt.${now}&select=buff_type,expires_at,activated_by`,{method:'GET',prefer:''});
+    const rows = await sbFetch(`cube_community_buffs?expires_at=gt.${now}&select=*`,{method:'GET',prefer:''});
     const prev = {...activeCommunityBuffs};
     activeCommunityBuffs = {};
     if(rows) rows.forEach(r=>{ if(!r.buff_type.startsWith('sab_')&&!r.buff_type.startsWith('presence_')) activeCommunityBuffs[r.buff_type]=new Date(r.expires_at).getTime(); });
@@ -1313,24 +1325,21 @@ function applySabotageEffects(rows){
     _activeSabotages[r.buff_type] = new Date(r.expires_at).getTime();
   });
 
-  // Apply effects
-  const slowActive    = Object.keys(_activeSabotages).includes('sab_slowChip');
-  const blindActive   = Object.keys(_activeSabotages).includes('sab_blindfold');
-
-  window._sabSlow     = slowActive;
-  window._sabHalfCoins= _activeSabotages['sab_halfCoins'] > now;
-  window._sabTinyArea = _activeSabotages['sab_tinyArea'] > now;
-  window._sabNoFrenzy = _activeSabotages['sab_noFrenzy'] > now;
-  window._sabCoinSteal= _activeSabotages['sab_coinSteal'] > now;
-  window._sabBlind    = blindActive;
-  window._sabMiasma   = _activeSabotages['sab_miasma'] > now;
+  // Apply effects (use consistent timestamp checks)
+  window._sabSlow      = !!(_activeSabotages['sab_slowChip']  > now);
+  window._sabHalfCoins = !!(_activeSabotages['sab_halfCoins'] > now);
+  window._sabTinyArea  = !!(_activeSabotages['sab_tinyArea']  > now);
+  window._sabNoFrenzy  = !!(_activeSabotages['sab_noFrenzy']  > now);
+  window._sabCoinSteal = !!(_activeSabotages['sab_coinSteal'] > now);
+  window._sabBlind     = !!(_activeSabotages['sab_blindfold'] > now);
+  window._sabMiasma    = !!(_activeSabotages['sab_miasma']    > now);
 
   // Restart auto-chipper with new speed
   if(passiveLevels.autoChipper>0) startAutoChip();
 
   // Blindfold: toggle grid visibility
   const canvas = document.getElementById('cubeCanvas');
-  if(canvas) canvas.style.filter = blindActive ? 'saturate(0) brightness(0.4)' : '';
+  if(canvas) canvas.style.filter = window._sabBlind ? 'saturate(0) brightness(0.4)' : '';
 
   // Frenzy freeze
   if(window._sabNoFrenzy && frenzyTimeLeft>0){
