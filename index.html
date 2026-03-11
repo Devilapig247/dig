@@ -511,7 +511,7 @@ async function loadState(){
   }catch(e){console.error('Load:',e.message);}
 }
 
-async async function loadAll(){
+async function loadAll(){
   await loadState();
   await loadCommunityBuffs();
   loadOnlinePlayers();
@@ -536,7 +536,7 @@ function updateStats(){
 }
 
 // LAYER COMPLETE
-async async function checkLayerComplete(){
+async function checkLayerComplete(){
   const s=(currentLayer-1)*TILES_PER_LAYER;let allG=true;
   for(let i=s;i<s+TILES_PER_LAYER;i++){if(!isRm(i)){allG=false;break;}}
   if(!allG)return;
