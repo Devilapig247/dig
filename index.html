@@ -925,7 +925,7 @@ setInterval(()=>{
 // ══════════════════════════════════════════════════════════════
 
 let knownTreasures = {}; // globalIdx -> {reward_type, reward_amount, found_by}
-const TREASURE_DENSITY = 0.05; // 5% of tiles have treasure (~500 per layer)
+const TREASURE_DENSITY = 0.005; // 0.5% of tiles have treasure (~50 per layer)
 const TREASURE_REWARDS = [
   // ── COMMON ──────────────────────────────────────────────
   {type:'coins',        icon:'💰', weight:35, amounts:[50,100,150,200],      rarity:'common'},
