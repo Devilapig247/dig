@@ -175,9 +175,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;
 
 <!-- PASSIVE BADGES -->
 <!-- COMMUNITY BUFFS BAR -->
-<div id="commBuffBar" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
-<div id="sabotageBar" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
-<div id="buyFlash"></div>
+<div id="commBuffBar" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:0;">
+  <div id="sabotageBar" style="display:contents;"></div>
+</div>
 
 <div id="passiveBadges" style="display:flex;gap:6px;padding:2px 20px;justify-content:center;flex-wrap:wrap;flex-shrink:0;min-height:4px;"></div>
 
@@ -964,8 +964,9 @@ async function loadCommunityBuffs(){
 
 // ── BUY ANIMATION ──
 function triggerBuyAnimation(btnEl, type) {
-  const flash = document.getElementById('buyFlash');
-  if (!flash || !btnEl) return;
+  let flash = document.getElementById('buyFlash');
+  if (!flash) { flash = document.createElement('div'); flash.id='buyFlash'; document.body.appendChild(flash); }
+  if (!btnEl) return;
   const rect = btnEl.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top  + rect.height / 2;
