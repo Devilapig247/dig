@@ -180,8 +180,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;
 <div id="hofBtn" onclick="toggleHof()" style="position:fixed;right:20px;top:calc(50% - 55px);background:rgba(0,0,0,0.9);border:1px solid rgba(255,215,0,0.25);border-radius:12px;padding:14px 10px;z-index:250;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.65em;color:#555;letter-spacing:1px;transition:0.2s;width:70px;text-align:center;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='rgba(255,215,0,0.25)';this.style.color='#555'">
   <span style="font-size:1.8em;">🏆</span><span>HALL OF<br>FAME</span>
 </div>
-<div id="commShopBtn" onclick="openCommShop()" style="position:fixed;right:20px;top:calc(50% + 55px);background:rgba(0,0,0,0.9);border:1px solid rgba(0,200,255,0.25);border-radius:12px;padding:14px 10px;z-index:250;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.65em;color:#555;letter-spacing:1px;transition:0.2s;width:70px;text-align:center;" onmouseover="this.style.borderColor='#00cfff';this.style.color='#00cfff'" onmouseout="this.style.borderColor='rgba(0,200,255,0.25)';this.style.color='#555'">
+<div id="commShopBtn" onclick="openCommShop()" style="position:fixed;right:20px;top:calc(50% + 35px);background:rgba(0,0,0,0.9);border:1px solid rgba(0,200,255,0.25);border-radius:12px;padding:14px 10px;z-index:250;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.65em;color:#555;letter-spacing:1px;transition:0.2s;width:70px;text-align:center;" onmouseover="this.style.borderColor='#00cfff';this.style.color='#00cfff'" onmouseout="this.style.borderColor='rgba(0,200,255,0.25)';this.style.color='#555'">
   <span style="font-size:1.8em;">🌐</span><span>COMM<br>BUFFS</span>
+</div>
+<div onclick="openSabotageShop()" style="position:fixed;right:20px;top:calc(50% + 125px);background:rgba(0,0,0,0.9);border:1px solid rgba(255,0,64,0.25);border-radius:12px;padding:14px 10px;z-index:250;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.65em;color:#555;letter-spacing:1px;transition:0.2s;width:70px;text-align:center;" onmouseover="this.style.borderColor='#ff0040';this.style.color='#ff0040'" onmouseout="this.style.borderColor='rgba(255,0,64,0.25)';this.style.color='#555'">
+  <span style="font-size:1.8em;">☠</span><span>SABO<br>TAGES</span>
 </div>
 
 <!-- TICKER -->
@@ -821,11 +824,18 @@ const COMM_BUFFS = [
 let activeCommunityBuffs = {}; // buffId -> expiresAt (ms timestamp)
 let commBuffInterval = null;
 
+function openSabotageShop(){
+  document.getElementById('sabCoinDisplay').innerText=coins.toLocaleString();
+  renderCommSabotageList();
+  document.getElementById('sabotageModal').style.display='flex';
+}
+function closeSabotageShop(){ document.getElementById('sabotageModal').style.display='none'; }
+
 function openCommShop(){
   document.getElementById('commCoinDisplay').innerText=coins.toLocaleString();
-  document.getElementById('commShopModal').style.display='flex';
-  setCommTab('buffs', document.getElementById('tabBuffs'));
+  renderCommBuffList();
   renderCommActive();
+  document.getElementById('commShopModal').style.display='flex';
 }
 function closeCommShop(){ document.getElementById('commShopModal').style.display='none'; }
 
@@ -1255,21 +1265,9 @@ const COMM_SABOTAGES = [
 
 let _activeSabotages = {}; // sabId -> expiresAt ms
 
-function setCommTab(tab, btn){
-  const isBuffs = tab==='buffs';
-  document.getElementById('commBuffList').style.display = isBuffs?'':'none';
-  document.getElementById('commSabotageList').style.display = isBuffs?'none':'';
-  document.getElementById('commBuffNote').style.display = isBuffs?'':'none';
-  document.getElementById('commSabotageNote').style.display = isBuffs?'none':'';
-  document.getElementById('tabBuffs').style.background = isBuffs?'#00cfff':'#0a0a0a';
-  document.getElementById('tabBuffs').style.color = isBuffs?'#000':'#555';
-  document.getElementById('tabSabotages').style.background = isBuffs?'#0a0a0a':'#ff0040';
-  document.getElementById('tabSabotages').style.color = isBuffs?'#ff4444':'#000';
-  if(!isBuffs) renderCommSabotageList();
-}
 
 function renderCommSabotageList(){
-  const el = document.getElementById('commSabotageList');
+  const el = document.getElementById('sabotageList'); if(!el)return;
   const now = Date.now();
   el.innerHTML = COMM_SABOTAGES.map(s=>{
     const active = _activeSabotages[s.id] && _activeSabotages[s.id] > now;
@@ -1387,15 +1385,9 @@ const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('use
   <div style="background:#050505;border:2px solid #00cfff;border-radius:15px;padding:30px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,200,255,0.2);position:relative;">
     <span onclick="closeCommShop()" style="position:absolute;top:15px;right:20px;color:#00cfff;font-size:22px;">✖</span>
     <h2 style="font-family:'Orbitron',monospace;color:#00cfff;text-align:center;letter-spacing:4px;margin-bottom:4px;font-size:1.1em;">🌐 COMMUNITY BUFFS</h2>
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;position:sticky;top:-30px;background:#050505;padding:10px 0;z-index:2;">
-    <button onclick="setCommTab('buffs',this)" id="tabBuffs" style="background:#00cfff;color:#000;border:none;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">⬆ BUFFS</button>
-    <button onclick="setCommTab('sabotages',this)" id="tabSabotages" style="background:#0a0a0a;color:#ff4444;border:1px solid #ff4444;padding:7px 20px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:0.75em;letter-spacing:2px;">☠ SABOTAGES</button>
-  </div>
-  <div id="commSabotageNote" style="display:none;text-align:center;color:#ff2222;font-size:0.7em;letter-spacing:2px;margin-bottom:14px;background:rgba(255,0,0,0.06);border:1px solid rgba(255,0,0,0.15);border-radius:8px;padding:8px;">⚠ AFFECTS ALL OTHER PLAYERS — YOU ARE IMMUNE</div>
-  <div style="text-align:center;color:#333;font-size:0.72em;letter-spacing:2px;margin-bottom:14px;" id="commBuffNote">BUY A BUFF — EVERYONE BENEFITS</div>
+  <div style="text-align:center;color:#333;font-size:0.72em;letter-spacing:2px;margin-bottom:14px;">BUY A BUFF — EVERYONE BENEFITS</div>
     <div style="text-align:center;color:#555;font-size:0.8em;letter-spacing:2px;margin-bottom:16px;">YOUR COINS: <span id="commCoinDisplay" style="color:var(--gold);">0</span></div>
     <div id="commBuffList"></div>
-    <div id="commSabotageList" style="display:none;"></div>
     <div style="margin-top:20px;border-top:1px solid #0a0a0a;padding-top:14px;">
       <div style="color:#2a2a2a;font-size:0.65em;letter-spacing:3px;margin-bottom:8px;">⏳ ACTIVE COMMUNITY BUFFS</div>
       <div id="commActiveList" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -1409,6 +1401,17 @@ const sv=localStorage.getItem('cubeUsername');if(sv)document.getElementById('use
   <div style="font-size:3.5em;margin-bottom:8px;" id="treasureIcon">💎</div>
   <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:0.9em;letter-spacing:3px;margin-bottom:8px;">TREASURE FOUND!</div>
   <div id="treasureMsg" style="color:#888;font-size:0.85em;letter-spacing:2px;margin-top:4px;"></div>
+</div>
+
+<!-- SABOTAGE MODAL -->
+<div id="sabotageModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:10007;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+  <div style="background:#050505;border:2px solid #ff0040;border-radius:15px;padding:30px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px rgba(255,0,64,0.2);position:relative;">
+    <span onclick="closeSabotageShop()" style="position:absolute;top:15px;right:20px;color:#ff0040;font-size:22px;cursor:pointer;">✖</span>
+    <h2 style="font-family:'Orbitron',monospace;color:#ff0040;text-align:center;letter-spacing:4px;margin-bottom:4px;font-size:1.1em;">☠ SABOTAGES</h2>
+    <div style="text-align:center;color:#ff0040;font-size:0.7em;letter-spacing:2px;margin-bottom:14px;background:rgba(255,0,64,0.06);border:1px solid rgba(255,0,64,0.15);border-radius:8px;padding:8px;">⚠ AFFECTS ALL OTHER PLAYERS — YOU ARE IMMUNE</div>
+    <div style="text-align:center;color:#333;font-size:0.8em;margin-bottom:16px;">🪙 <span id="sabCoinDisplay">0</span> coins</div>
+    <div id="sabotageList"></div>
+  </div>
 </div>
 
 </body>
